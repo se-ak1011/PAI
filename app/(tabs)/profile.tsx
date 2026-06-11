@@ -1,0 +1,955 @@
+import React, { useState } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, Pressable, Switch, TextInput, Modal, ActivityIndicator,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
+import { useAuth } from '@/hooks/useAuth';
+import { TRADE_CATEGORIES } from '@/constants/config';
+import { useRole } from '@/hooks/useRole';
+import { useJobs } from '@/hooks/useJobs';
+import { MOCK_REVIEWS } from '@/services/mockData';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useAlert } from '@/template';
+import { RoleSwitcherBar } from './_layout';
+
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 2 }}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <MaterialIcons
+          key={i}
+          name={i < Math.floor(rating) ? 'star' : i < rating ? 'star-half' : 'star-border'}
+          size={size}
+          color={Colors.warning}
+        />
+      ))}
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Edit Profile Modal
+// ─────────────────────────────────────────────
+function EditProfileModal({
+  visible,
+  onClose,
+  isContractor,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  isContractor: boolean;
+}) {
+  const { user, updateProfile, operationLoading } = useAuth();
+  const { showAlert } = useAlert();
+  const [name, setName] = useState(user?.display_name || '');
+  const [businessName, setBusinessName] = useState(user?.business_name || '');
+  const [city, setCity] = useState(user?.city || '');
+  const [postcode, setPostcode] = useState(user?.postcode_area || '');
+  const [bio, setBio] = useState(user?.bio || '');
+  const [dayRate, setDayRate] = useState(String(user?.hourly_rate_from || ''));
+  const [hourlyRate, setHourlyRate] = useState(String((user as any)?.hourly_rate || ''));
+  const [preferredShop, setPreferredShop] = useState((user as any)?.preferred_shop || '');
+  const [flexiblePricing, setFlexiblePricing] = useState((user as any)?.flexible_pricing ?? false);
+  const [selectedTrades, setSelectedTrades] = useState<string[]>(user?.trades || []);
+  const [website, setWebsite] = useState((user as any)?.website || '');
+
+  // Reset state when modal opens with latest user data
+  React.useEffect(() => {
+    if (visible) {
+      setName(user?.display_name || '');
+      setBusinessName(user?.business_name || '');
+      setCity(user?.city || '');
+      setPostcode(user?.postcode_area || '');
+      setBio(user?.bio || '');
+      setDayRate(String(user?.hourly_rate_from || ''));
+      setHourlyRate(String((user as any)?.hourly_rate || ''));
+      setPreferredShop((user as any)?.preferred_shop || '');
+      setFlexiblePricing((user as any)?.flexible_pricing ?? false);
+      setSelectedTrades(user?.trades || []);
+      setWebsite((user as any)?.website || '');
+    }
+  }, [visible]);
+
+  const toggleTrade = (t: string) => {
+    setSelectedTrades(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+  };
+
+  const handleSave = async () => {
+    const updateData: any = {
+      display_name: name,
+      city: city || undefined,
+      postcode_area: postcode || undefined,
+    };
+
+    if (isContractor) {
+      updateData.business_name = businessName || undefined;
+      updateData.bio = bio || undefined;
+      updateData.hourly_rate_from = parseFloat(dayRate) || undefined;
+      updateData.trades = selectedTrades;
+      updateData.preferred_shop = preferredShop || undefined;
+      updateData.hourly_rate = parseFloat(hourlyRate) || undefined;
+      updateData.flexible_pricing = flexiblePricing;
+    } else {
+      // Customer profile save — mark customer profile as complete
+      if (name && city) {
+        updateData.customer_profile_complete = true;
+      }
+    }
+
+    await updateProfile(updateData);
+    showAlert('Saved', 'Your profile has been updated.');
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaView style={editStyles.container} edges={['top', 'bottom']}>
+        <View style={editStyles.header}>
+          <Pressable onPress={onClose} hitSlop={8}>
+            <MaterialIcons name="close" size={22} color={Colors.textSecondary} />
+          </Pressable>
+          <Text style={editStyles.title}>Edit Profile</Text>
+          <Pressable onPress={handleSave} disabled={operationLoading} hitSlop={8}>
+            {operationLoading
+              ? <ActivityIndicator size="small" color={Colors.primaryGlow} />
+              : <Text style={editStyles.saveText}>Save</Text>}
+          </Pressable>
+        </View>
+        <ScrollView contentContainerStyle={editStyles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={editStyles.section}>
+            <Text style={editStyles.label}>DISPLAY NAME</Text>
+            <TextInput style={editStyles.input} value={name} onChangeText={setName} placeholderTextColor={Colors.textMuted} placeholder="Your name" />
+          </View>
+          {isContractor ? (
+            <View style={editStyles.section}>
+              <Text style={editStyles.label}>BUSINESS NAME</Text>
+              <TextInput style={editStyles.input} value={businessName} onChangeText={setBusinessName} placeholderTextColor={Colors.textMuted} placeholder="Webb & Sons Electrical" />
+            </View>
+          ) : null}
+          <View style={editStyles.section}>
+            <Text style={editStyles.label}>CITY</Text>
+            <TextInput style={editStyles.input} value={city} onChangeText={setCity} placeholderTextColor={Colors.textMuted} placeholder="Manchester" />
+          </View>
+          <View style={editStyles.section}>
+            <Text style={editStyles.label}>POSTCODE AREA</Text>
+            <TextInput style={editStyles.input} value={postcode} onChangeText={setPostcode} placeholderTextColor={Colors.textMuted} placeholder="M1" autoCapitalize="characters" />
+          </View>
+          {isContractor ? (
+            <>
+              {/* Trades */}
+              <View style={editStyles.section}>
+                <Text style={editStyles.label}>TRADES</Text>
+                <View style={editStyles.tradesGrid}>
+                  {TRADE_CATEGORIES.map(t => (
+                    <Pressable
+                      key={t}
+                      style={[editStyles.tradeChip, selectedTrades.includes(t) && editStyles.tradeChipActive]}
+                      onPress={() => toggleTrade(t)}
+                    >
+                      <Text style={[editStyles.tradeChipText, selectedTrades.includes(t) && editStyles.tradeChipTextActive]}>{t}</Text>
+                      {selectedTrades.includes(t) ? (
+                        <MaterialIcons name="check" size={12} color={Colors.textInverse} />
+                      ) : null}
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              <View style={editStyles.section}>
+                <Text style={editStyles.label}>ABOUT / BIO</Text>
+                <TextInput
+                  style={[editStyles.input, editStyles.textarea]}
+                  value={bio}
+                  onChangeText={setBio}
+                  placeholderTextColor={Colors.textMuted}
+                  placeholder="Tell customers about your experience and specialisms..."
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+
+              {/* Rates */}
+              <View style={editStyles.twoCol}>
+                <View style={[editStyles.section, { flex: 1 }]}>
+                  <Text style={editStyles.label}>DAY RATE (£)</Text>
+                  <TextInput style={editStyles.input} value={dayRate} onChangeText={setDayRate} keyboardType="decimal-pad" placeholderTextColor={Colors.textMuted} placeholder="250" />
+                </View>
+                <View style={[editStyles.section, { flex: 1 }]}>
+                  <Text style={editStyles.label}>HOURLY RATE (£)</Text>
+                  <TextInput style={editStyles.input} value={hourlyRate} onChangeText={setHourlyRate} keyboardType="decimal-pad" placeholderTextColor={Colors.textMuted} placeholder="35" />
+                </View>
+              </View>
+
+              {/* Preferred shop */}
+              <View style={editStyles.section}>
+                <Text style={editStyles.label}>PREFERRED MATERIALS SUPPLIER</Text>
+                <TextInput style={editStyles.input} value={preferredShop} onChangeText={setPreferredShop} placeholderTextColor={Colors.textMuted} placeholder="e.g. Screwfix, Toolstation, Travis Perkins" />
+              </View>
+
+              {/* Flexible pricing toggle */}
+              <View style={editStyles.toggleRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={editStyles.toggleLabel}>Flexible pricing</Text>
+                  <Text style={editStyles.toggleSub}>AI quotes will show ranges instead of fixed prices</Text>
+                </View>
+                <Switch
+                  value={flexiblePricing}
+                  onValueChange={setFlexiblePricing}
+                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  thumbColor={Colors.textInverse}
+                />
+              </View>
+
+              <View style={editStyles.section}>
+                <Text style={editStyles.label}>WEBSITE / SOCIAL</Text>
+                <TextInput style={editStyles.input} value={website} onChangeText={setWebsite} placeholderTextColor={Colors.textMuted} placeholder="https://yourwebsite.com" autoCapitalize="none" />
+              </View>
+            </>
+          ) : null}
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+const editStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.bg },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  title: { ...Typography.headingMD },
+  saveText: { ...Typography.btnSM, color: Colors.primaryGlow, fontWeight: '600' },
+  scroll: { padding: Spacing.md, gap: 0, paddingBottom: Spacing.xxl },
+  section: { marginBottom: 20 },
+  label: { ...Typography.labelXS, marginBottom: 8 },
+  input: {
+    backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border, paddingHorizontal: 16, paddingVertical: 14,
+    ...Typography.bodyMD, color: Colors.textPrimary,
+  },
+  textarea: { height: 100, textAlignVertical: 'top', paddingTop: 14 },
+  twoCol: { flexDirection: 'row', gap: 12 },
+  tradesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tradeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.pill,
+    backgroundColor: Colors.cardAlt, borderWidth: 1, borderColor: Colors.border,
+  },
+  tradeChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  tradeChipText: { ...Typography.labelMD, color: Colors.textSecondary },
+  tradeChipTextActive: { color: Colors.textInverse, fontWeight: '600' },
+  toggleRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border, padding: 14,
+  },
+  toggleLabel: { ...Typography.bodyMD },
+  toggleSub: { ...Typography.labelSM, color: Colors.textMuted, marginTop: 2 },
+});
+
+// ─────────────────────────────────────────────
+// Settings Modal (shared)
+// ─────────────────────────────────────────────
+function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { user, logout, updateProfile } = useAuth();
+  const { showAlert } = useAlert();
+  const router = useRouter();
+  const [available, setAvailable] = useState(user?.available ?? true);
+
+  const handleLogout = () => {
+    showAlert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out', style: 'destructive', onPress: async () => {
+          onClose();
+          await logout();
+          router.replace('/auth');
+        },
+      },
+    ]);
+  };
+
+  const handleAvailToggle = async (val: boolean) => {
+    setAvailable(val);
+    await updateProfile({ available: val });
+  };
+
+  const rows = [
+    { icon: 'notifications-none', label: 'Notifications', action: () => showAlert('Coming Soon', 'Notification settings coming soon.') },
+    { icon: 'lock-outline', label: 'Password & Security', action: () => showAlert('Coming Soon', 'Security settings coming soon.') },
+    { icon: 'payment', label: 'Payment Methods', action: () => showAlert('Stripe', 'Payment method management coming with Stripe integration.') },
+    { icon: 'admin-panel-settings', label: 'Admin: Disputes', action: () => { onClose(); router.push('/admin-disputes'); } },
+  ];
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaView style={settStyles.container} edges={['top', 'bottom']}>
+        <View style={settStyles.header}>
+          <Pressable onPress={onClose} hitSlop={8}>
+            <MaterialIcons name="close" size={22} color={Colors.textSecondary} />
+          </Pressable>
+          <Text style={settStyles.title}>Settings</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        <ScrollView contentContainerStyle={settStyles.scroll} showsVerticalScrollIndicator={false}>
+          {/* Availability toggle (contractor) */}
+          {(user?.account_type === 'contractor' || user?.account_type === 'both') ? (
+            <View style={settStyles.toggleRow}>
+              <View>
+                <Text style={settStyles.toggleLabel}>Available for work</Text>
+                <Text style={settStyles.toggleSub}>Visible on your public profile</Text>
+              </View>
+              <Switch
+                value={available}
+                onValueChange={handleAvailToggle}
+                trackColor={{ false: Colors.border, true: Colors.primary }}
+                thumbColor={Colors.textInverse}
+              />
+            </View>
+          ) : null}
+
+          <View style={settStyles.list}>
+            {rows.map((row, i) => (
+              <Pressable
+                key={row.label}
+                style={[settStyles.row, i === rows.length - 1 && settStyles.rowLast]}
+                onPress={row.action}
+              >
+                <View style={settStyles.rowLeft}>
+                  <MaterialIcons name={row.icon as any} size={20} color={Colors.textSecondary} />
+                  <Text style={settStyles.rowLabel}>{row.label}</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={settStyles.version}>PAI v1.0.0 · {user?.id?.slice(0, 8)}</Text>
+
+          <Pressable style={settStyles.signOutBtn} onPress={handleLogout}>
+            <MaterialIcons name="logout" size={18} color={Colors.error} />
+            <Text style={settStyles.signOutText}>Sign Out</Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+const settStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.bg },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  title: { ...Typography.headingMD },
+  scroll: { padding: Spacing.md, gap: Spacing.md, paddingBottom: Spacing.xxl },
+  toggleRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
+    borderColor: Colors.border, padding: 16,
+  },
+  toggleLabel: { ...Typography.bodyMD },
+  toggleSub: { ...Typography.labelSM, color: Colors.textMuted, marginTop: 2 },
+  list: { backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  rowLast: { borderBottomWidth: 0 },
+  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  rowLabel: { ...Typography.bodyMD },
+  version: { ...Typography.labelXS, textAlign: 'center', color: Colors.textMuted },
+  signOutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    padding: 16, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.errorDim,
+    backgroundColor: Colors.errorDim,
+  },
+  signOutText: { ...Typography.btnMD, color: Colors.error },
+});
+
+// ─────────────────────────────────────────────
+// Contractor Profile Tab
+// ─────────────────────────────────────────────
+function ContractorProfileTab() {
+  const { user } = useAuth();
+  const { showAlert } = useAlert();
+  const [showEdit, setShowEdit] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const reviews = MOCK_REVIEWS;
+  const avgRating = reviews.length > 0
+    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+    : 0;
+
+  const portfolioPlaceholders = [
+    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=300&fit=crop',
+  ];
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar style="light" />
+
+      {/* Header */}
+      <View style={styles.topBar}>
+        <Text style={styles.topTitle}>Profile</Text>
+        <View style={styles.topActions}>
+          <Pressable style={styles.iconBtn} onPress={() => setShowEdit(true)}>
+            <MaterialIcons name="edit" size={18} color={Colors.textSecondary} />
+          </Pressable>
+          <Pressable style={styles.iconBtn} onPress={() => setShowSettings(true)}>
+            <MaterialIcons name="settings" size={18} color={Colors.textSecondary} />
+          </Pressable>
+          <Pressable style={styles.iconBtn} onPress={() => showAlert('Notifications', 'No new notifications.')}>
+            <MaterialIcons name="notifications-none" size={20} color={Colors.textSecondary} />
+          </Pressable>
+        </View>
+      </View>
+      <View style={styles.topDivider} />
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        {/* Hero */}
+        <View style={styles.heroRow}>
+          <Pressable onPress={() => showAlert('Photo Upload', 'Avatar upload coming with storage integration.')} style={styles.avatarWrap}>
+            {user?.avatar_url ? (
+              <Image source={{ uri: user.avatar_url }} style={styles.avatar} contentFit="cover" transition={200} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <MaterialIcons name="person" size={36} color={Colors.textInverse} />
+              </View>
+            )}
+            <View style={styles.avatarEditBadge}>
+              <MaterialIcons name="camera-alt" size={12} color={Colors.textInverse} />
+            </View>
+          </Pressable>
+
+          <View style={styles.heroInfo}>
+            <Text style={styles.heroName}>{user?.display_name || 'Your Name'}</Text>
+            {user?.business_name ? <Text style={styles.heroBusiness}>{user.business_name}</Text> : null}
+            {avgRating > 0 ? (
+              <View style={styles.ratingRow}>
+                <StarRow rating={avgRating} />
+                <Text style={styles.ratingText}>{avgRating.toFixed(1)} ({reviews.length} reviews)</Text>
+              </View>
+            ) : (
+              <Text style={styles.noReviews}>No reviews yet</Text>
+            )}
+            <View style={[
+              styles.availBadge,
+              user?.available ? styles.availGreen : styles.availRed,
+            ]}>
+              <View style={[styles.availDot, { backgroundColor: user?.available ? Colors.success : Colors.error }]} />
+              <Text style={[styles.availText, { color: user?.available ? Colors.success : Colors.error }]}>
+                {user?.available ? 'Available for work' : 'Currently busy'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>0</Text>
+            <Text style={styles.statLbl}>JOBS DONE</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{reviews.length}</Text>
+            <Text style={styles.statLbl}>REVIEWS</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statVal, { color: Colors.success }]}>
+              {user?.hourly_rate_from ? `£${user.hourly_rate_from}` : '—'}
+            </Text>
+            <Text style={styles.statLbl}>FROM/DAY</Text>
+          </View>
+        </View>
+
+        {/* Location */}
+        {(user?.city || user?.postcode_area) ? (
+          <View style={styles.infoRow}>
+            <MaterialIcons name="location-on" size={16} color={Colors.textMuted} />
+            <Text style={styles.infoText}>
+              {[user.city, user.postcode_area].filter(Boolean).join(', ')}
+            </Text>
+          </View>
+        ) : (
+          <Pressable style={styles.infoRow} onPress={() => setShowEdit(true)}>
+            <MaterialIcons name="location-on" size={16} color={Colors.textMuted} />
+            <Text style={[styles.infoText, { color: Colors.textMuted }]}>Add your location</Text>
+            <MaterialIcons name="add" size={14} color={Colors.primaryGlow} />
+          </Pressable>
+        )}
+
+        {/* Trades */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Trades</Text>
+            <Pressable onPress={() => showAlert('Edit Trades', 'Trade management available in Edit Profile.')} hitSlop={8}>
+              <MaterialIcons name="edit" size={15} color={Colors.textMuted} />
+            </Pressable>
+          </View>
+          {user?.trades && user.trades.length > 0 ? (
+            <View style={styles.tags}>
+              {user.trades.map(t => (
+                <View key={t} style={styles.tradeTag}>
+                  <Text style={styles.tradeTagText}>{t}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Pressable style={styles.emptyAdd} onPress={() => setShowEdit(true)}>
+              <MaterialIcons name="add" size={16} color={Colors.primaryGlow} />
+              <Text style={styles.emptyAddText}>Add your trades</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {/* About */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>About</Text>
+            <Pressable onPress={() => setShowEdit(true)} hitSlop={8}>
+              <MaterialIcons name="edit" size={15} color={Colors.textMuted} />
+            </Pressable>
+          </View>
+          {user?.bio ? (
+            <Text style={styles.bioText}>{user.bio}</Text>
+          ) : (
+            <Pressable style={styles.emptyAdd} onPress={() => setShowEdit(true)}>
+              <MaterialIcons name="add" size={16} color={Colors.primaryGlow} />
+              <Text style={styles.emptyAddText}>Add a bio — tell customers about your experience</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {/* Availability Calendar */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Availability</Text>
+          <Pressable
+            style={styles.calendarCard}
+            onPress={() => showAlert('Coming Soon', 'Availability calendar coming soon. Customers will be able to see your availability when browsing your profile.')}
+          >
+            <View style={styles.calendarIcon}>
+              <MaterialIcons name="calendar-today" size={22} color={Colors.primaryGlow} />
+            </View>
+            <View style={styles.calendarInfo}>
+              <Text style={styles.calendarTitle}>Set your availability</Text>
+              <Text style={styles.calendarSub}>Customers can see when you are free</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={18} color={Colors.textMuted} />
+          </Pressable>
+        </View>
+
+        {/* Portfolio */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Portfolio</Text>
+            <Pressable
+              style={styles.addPhotoBtn}
+              onPress={() => showAlert('Photo Upload', 'Portfolio photo upload coming with storage integration.')}
+            >
+              <MaterialIcons name="add-photo-alternate" size={15} color={Colors.primaryGlow} />
+              <Text style={styles.addPhotoBtnText}>Add photo</Text>
+            </Pressable>
+          </View>
+          <View style={styles.portfolioGrid}>
+            {portfolioPlaceholders.map((uri, i) => (
+              <Pressable
+                key={i}
+                onPress={() => showAlert('Portfolio', 'Photo management coming with storage integration.')}
+              >
+                <Image source={{ uri }} style={styles.portfolioImg} contentFit="cover" transition={200} />
+                <View style={styles.portfolioOverlay}>
+                  <MaterialIcons name="edit" size={14} color={Colors.textInverse} />
+                </View>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.portfolioHint}>
+            Tap a photo to edit or remove. Photos are visible on your public contractor profile.
+          </Text>
+        </View>
+
+        {/* Website / Social */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Links</Text>
+          <Pressable
+            style={styles.linkRow}
+            onPress={() => setShowEdit(true)}
+          >
+            <MaterialIcons name="link" size={18} color={Colors.primaryGlow} />
+            <Text style={styles.linkText}>
+              {(user as any)?.website || 'Add website or social media link'}
+            </Text>
+            <MaterialIcons name="chevron-right" size={16} color={Colors.textMuted} />
+          </Pressable>
+        </View>
+
+        {/* Reviews */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Reviews</Text>
+          {reviews.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyCardText}>No reviews yet. Complete jobs through the marketplace to receive reviews.</Text>
+            </View>
+          ) : (
+            reviews.map(r => (
+              <View key={r.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.reviewAuthor}>{r.author_name}</Text>
+                  <View style={{ flexDirection: 'row', gap: 2 }}>
+                    {Array.from({ length: r.rating }).map((_, i) => (
+                      <MaterialIcons key={i} name="star" size={13} color={Colors.warning} />
+                    ))}
+                  </View>
+                </View>
+                <Text style={styles.reviewComment}>{r.comment}</Text>
+                <Text style={styles.reviewDate}>{r.created_at}</Text>
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
+
+      <RoleSwitcherBar currentTab="profile" />
+      <EditProfileModal visible={showEdit} onClose={() => setShowEdit(false)} isContractor />
+      <SettingsModal visible={showSettings} onClose={() => setShowSettings(false)} />
+    </SafeAreaView>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Customer Profile Tab
+// ─────────────────────────────────────────────
+function CustomerProfileTab() {
+  const { user } = useAuth();
+  const { jobPosts } = useJobs();
+  const router = useRouter();
+  const { showAlert } = useAlert();
+  const [showEdit, setShowEdit] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const myPosts = jobPosts.filter(p => p.client_id === user?.id);
+  // Reviews received as a customer (from contractors rating them)
+  const customerReviews = MOCK_REVIEWS.filter((r: any) => r.mode === 'contractor_to_customer');
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar style="light" />
+
+      <View style={styles.topBar}>
+        <Text style={styles.topTitle}>Profile</Text>
+        <View style={styles.topActions}>
+          <Pressable style={styles.iconBtn} onPress={() => setShowEdit(true)}>
+            <MaterialIcons name="edit" size={18} color={Colors.textSecondary} />
+          </Pressable>
+          <Pressable style={styles.iconBtn} onPress={() => setShowSettings(true)}>
+            <MaterialIcons name="settings" size={18} color={Colors.textSecondary} />
+          </Pressable>
+          <Pressable style={styles.iconBtn} onPress={() => showAlert('Notifications', 'No new notifications.')}>
+            <MaterialIcons name="notifications-none" size={20} color={Colors.textSecondary} />
+          </Pressable>
+        </View>
+      </View>
+      <View style={styles.topDivider} />
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        {/* Profile card */}
+        <View style={styles.customerCard}>
+          <Pressable
+            style={styles.customerAvatarWrap}
+            onPress={() => showAlert('Photo Upload', 'Avatar upload coming with storage integration.')}
+          >
+            {user?.avatar_url ? (
+              <Image source={{ uri: user.avatar_url }} style={styles.customerAvatar} contentFit="cover" />
+            ) : (
+              <View style={[styles.customerAvatar, styles.avatarFallback]}>
+                <MaterialIcons name="person" size={28} color={Colors.textInverse} />
+              </View>
+            )}
+            <View style={styles.avatarEditBadge}>
+              <MaterialIcons name="camera-alt" size={12} color={Colors.textInverse} />
+            </View>
+          </Pressable>
+          <View style={styles.customerInfo}>
+            <Text style={styles.customerName}>{user?.display_name || 'Your Name'}</Text>
+            <View style={styles.infoRow}>
+              <MaterialIcons name="location-on" size={13} color={Colors.textMuted} />
+              <Text style={styles.customerLoc}>
+                {user?.city || 'Location not set'}{user?.postcode_area ? `, ${user.postcode_area}` : ''}
+              </Text>
+            </View>
+            <Text style={styles.customerEmail}>{user?.email}</Text>
+          </View>
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{myPosts.length}</Text>
+            <Text style={styles.statLbl}>JOBS POSTED</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{myPosts.filter(p => p.status === 'open').length}</Text>
+            <Text style={styles.statLbl}>OPEN</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{customerReviews.length}</Text>
+            <Text style={styles.statLbl}>REVIEWS</Text>
+          </View>
+        </View>
+
+        {/* Past jobs */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your recent jobs</Text>
+          {myPosts.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyCardText}>
+                {"You haven't posted any jobs yet."}
+              </Text>
+            </View>
+          ) : (
+            myPosts.slice(0, 5).map(p => (
+              <Pressable
+                key={p.id}
+                style={styles.jobRow}
+                onPress={() => router.push({ pathname: '/marketplace-job', params: { id: p.id } })}
+              >
+                <View style={styles.jobRowLeft}>
+                  <Text style={styles.jobRowTitle} numberOfLines={1}>{p.title}</Text>
+                  <Text style={styles.jobRowSub}>{p.city} · {p.status}</Text>
+                </View>
+                <Text style={styles.jobRowAmount}>£{p.budget.toLocaleString()}</Text>
+              </Pressable>
+            ))
+          )}
+        </View>
+
+        {/* Reviews received */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Reviews received</Text>
+          {customerReviews.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyCardText}>
+                No reviews yet. Contractors can leave reviews after completing a job for you.
+              </Text>
+            </View>
+          ) : (
+            customerReviews.map((r: any) => (
+              <View key={r.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.reviewAuthor}>{r.author_name}</Text>
+                  <View style={{ flexDirection: 'row', gap: 2 }}>
+                    {Array.from({ length: r.rating }).map((_: any, i: number) => (
+                      <MaterialIcons key={i} name="star" size={13} color={Colors.warning} />
+                    ))}
+                  </View>
+                </View>
+                <Text style={styles.reviewComment}>{r.comment}</Text>
+                <Text style={styles.reviewDate}>{r.created_at}</Text>
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
+
+      <RoleSwitcherBar currentTab="profile" />
+      <EditProfileModal visible={showEdit} onClose={() => setShowEdit(false)} isContractor={false} />
+      <SettingsModal visible={showSettings} onClose={() => setShowSettings(false)} />
+    </SafeAreaView>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Root — dispatch based on active role
+// ─────────────────────────────────────────────
+export default function ProfileScreen() {
+  const { user } = useAuth();
+  const { activeRole, isDualAccount } = useRole();
+
+  if (isDualAccount) {
+    // In profile mode show contractor profile (it's their unified editable profile)
+    if (activeRole === 'customer') return <CustomerProfileTab />;
+    return <ContractorProfileTab />;
+  }
+
+  if (user?.account_type === 'customer') return <CustomerProfileTab />;
+  return <ContractorProfileTab />;
+}
+
+// ─────────────────────────────────────────────
+// Shared Styles
+// ─────────────────────────────────────────────
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.bg },
+  topBar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: Spacing.md, paddingVertical: 12,
+  },
+  topTitle: { ...Typography.brandMD },
+  topDivider: { height: 1, backgroundColor: Colors.border },
+  topActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  iconBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  scroll: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 120 },
+
+  // Hero (contractor)
+  heroRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+  avatarWrap: { position: 'relative' },
+  avatar: { width: 86, height: 86, borderRadius: 43, borderWidth: 3, borderColor: Colors.primary },
+  avatarFallback: { backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarEditBadge: {
+    position: 'absolute', bottom: 2, right: 2,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: Colors.primary, borderWidth: 2, borderColor: Colors.bg,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  heroInfo: { flex: 1, gap: 6 },
+  heroName: { ...Typography.brandMD },
+  heroBusiness: { ...Typography.labelMD, color: Colors.textSecondary },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ratingText: { ...Typography.labelSM },
+  noReviews: { ...Typography.labelSM, color: Colors.textMuted },
+  availBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.pill, borderWidth: 1,
+  },
+  availGreen: { backgroundColor: Colors.successDim, borderColor: Colors.success },
+  availRed: { backgroundColor: Colors.errorDim, borderColor: Colors.error },
+  availDot: { width: 6, height: 6, borderRadius: 3 },
+  availText: { fontSize: 12, fontWeight: '500' },
+
+  // Stats bar
+  statsBar: {
+    flexDirection: 'row', backgroundColor: Colors.card, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, padding: 16,
+  },
+  statItem: { flex: 1, alignItems: 'center', gap: 4 },
+  statDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
+  statVal: { ...Typography.dataLG },
+  statLbl: { ...Typography.labelXS },
+
+  // Info row
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  infoText: { ...Typography.bodyMD, color: Colors.textSecondary },
+
+  // Section
+  section: { gap: 12 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { ...Typography.headingMD },
+
+  // Tags
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tradeTag: {
+    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: Colors.card, borderRadius: Radius.pill,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  tradeTagText: { ...Typography.labelMD },
+
+  // Bio
+  bioText: { ...Typography.bodyMD, color: Colors.textSecondary, lineHeight: 22 },
+
+  // Empty add prompt
+  emptyAdd: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    padding: 14, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border, borderStyle: 'dashed',
+  },
+  emptyAddText: { ...Typography.labelMD, color: Colors.textMuted },
+
+  // Calendar card
+  calendarCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.card, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, padding: 16,
+  },
+  calendarIcon: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: Colors.primaryDim, alignItems: 'center', justifyContent: 'center',
+  },
+  calendarInfo: { flex: 1, gap: 3 },
+  calendarTitle: { ...Typography.bodyMD },
+  calendarSub: { ...Typography.labelSM, color: Colors.textMuted },
+
+  // Portfolio
+  addPhotoBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: Colors.primaryDim, borderRadius: Radius.pill,
+    borderWidth: 1, borderColor: Colors.primaryLight,
+  },
+  addPhotoBtnText: { ...Typography.labelSM, color: Colors.primaryGlow, fontWeight: '600' },
+  portfolioGrid: { flexDirection: 'row', gap: 8 },
+  portfolioImg: { flex: 1, height: 100, borderRadius: Radius.md, overflow: 'hidden' },
+  portfolioOverlay: {
+    position: 'absolute', bottom: 6, right: 6,
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
+  },
+  portfolioHint: { ...Typography.labelXS, color: Colors.textMuted },
+
+  // Links
+  linkRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.card, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border, padding: 14,
+  },
+  linkText: { ...Typography.bodyMD, color: Colors.textSecondary, flex: 1 },
+
+  // Reviews
+  reviewCard: {
+    backgroundColor: Colors.card, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border, padding: 14, gap: 8,
+  },
+  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  reviewAuthor: { ...Typography.dataMD },
+  reviewComment: { ...Typography.bodyMD, color: Colors.textSecondary, lineHeight: 20 },
+  reviewDate: { ...Typography.labelSM, color: Colors.textMuted },
+
+  // Customer profile card
+  customerCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 16,
+    backgroundColor: Colors.card, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, padding: 18,
+  },
+  customerAvatarWrap: { position: 'relative' },
+  customerAvatar: { width: 64, height: 64, borderRadius: 16, overflow: 'hidden' },
+  customerInfo: { flex: 1, gap: 4 },
+  customerName: { ...Typography.brandSM },
+  customerLoc: { ...Typography.labelMD },
+  customerEmail: { ...Typography.labelSM, color: Colors.textMuted },
+
+  // Job rows
+  jobRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: Colors.card, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border, padding: 14,
+  },
+  jobRowLeft: { flex: 1, gap: 3 },
+  jobRowTitle: { ...Typography.dataMD },
+  jobRowSub: { ...Typography.labelSM },
+  jobRowAmount: { ...Typography.dataMD, color: Colors.success },
+
+  // Empty states
+  emptyCard: {
+    backgroundColor: Colors.card, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: 24, alignItems: 'center',
+  },
+  emptyCardText: { ...Typography.bodyMD, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
+});
