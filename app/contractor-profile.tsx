@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { PButton } from '@/components/ui/PButton';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useAlert } from '@/template';
+import { useAuth } from '@/hooks/useAuth';
 import { getSupabaseClient } from '@/template';
 import { MaterialIcons } from '@expo/vector-icons';
 

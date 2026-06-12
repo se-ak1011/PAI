@@ -9,3 +9,5 @@ export { AddIncomeModal } from './feature/AddIncomeModal';
 export { CreateJobModal } from './feature/CreateJobModal';
 export { PostJobModal } from './feature/PostJobModal';
 export { CreateInvoiceModal } from './feature/CreateInvoiceModal';
+export { CustomerReviewModal } from './feature/CustomerReviewModal';
+export { ReliabilityBadge } from './ui/ReliabilityBadge';

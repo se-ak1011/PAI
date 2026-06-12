@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template';
 import { getSupabaseClient } from '@/template';
 import { calculateCheckoutTotal, PLATFORM_PRINCIPLES } from '@/constants/config';
+import { useReliability } from '@/hooks/useReliability';
+import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
 import { MaterialIcons } from '@expo/vector-icons';
 
 // ─── Quote type toggle ────────────────────────────────────────
@@ -39,6 +41,11 @@ export default function MarketplaceJobScreen() {
   const isContractorAccount = user?.account_type === 'contractor' || user?.account_type === 'both';
   const isClientAccount = user?.account_type === 'customer' || user?.account_type === 'both';
   const isOwnPost = post?.client_id === user?.id;
+
+  // Reliability score — shown to contractors before they apply
+  const { score: reliabilityScore } = useReliability(
+    isContractorAccount && !isOwnPost ? post?.client_id : null
+  );
 
   if (!post) {
     return (
@@ -223,6 +230,14 @@ export default function MarketplaceJobScreen() {
                   </View>
                 ))}
               </View>
+            </View>
+          ) : null}
+
+          {/* Client reliability — shown to contractors only, not to the post owner */}
+          {isContractorAccount && !isOwnPost ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Client Reliability</Text>
+              <ReliabilityBadge score={reliabilityScore} size="md" />
             </View>
           ) : null}
 

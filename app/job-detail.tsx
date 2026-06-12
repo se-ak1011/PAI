@@ -7,9 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useJobs } from '@/hooks/useJobs';
+import { getSupabaseClient } from '@/template';
 import { useTaxPot } from '@/hooks/useTaxPot';
 import { useAlert } from '@/template';
 import { JOB_STATUS_ACTIONS, PLATFORM_PRINCIPLES } from '@/constants/config';
+import { CustomerReviewModal } from '@/components/feature/CustomerReviewModal';
+import { useReliability } from '@/hooks/useReliability';
+import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -43,6 +47,23 @@ export default function JobDetailScreen() {
 
   const job = privateJobs.find(j => j.id === id);
   const [updating, setUpdating] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+
+  // Reliability score — look up customer on PAI-marketplace jobs (have source_job_post_id + client_id)
+  const [customerId, setCustomerId] = React.useState<string | null>(null);
+  const { score: reliabilityScore } = useReliability(customerId);
+
+  // Fetch customer user_id for marketplace-originated jobs
+  React.useEffect(() => {
+    if (!job?.source_job_post_id) return;
+    const supabase = getSupabaseClient();
+    supabase
+      .from('job_posts')
+      .select('client_id')
+      .eq('id', job.source_job_post_id)
+      .maybeSingle()
+      .then(({ data }) => { if (data?.client_id) setCustomerId(data.client_id); });
+  }, [job?.source_job_post_id]);
 
   if (!job) {
     return (
@@ -192,6 +213,14 @@ export default function JobDetailScreen() {
           </View>
         ) : null}
 
+        {/* Client reliability — visible only for marketplace-sourced jobs */}
+        {job.source_job_post_id && reliabilityScore ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Client Reliability</Text>
+            <ReliabilityBadge score={reliabilityScore} size="md" />
+          </View>
+        ) : null}
+
         {/* Contractor protection notice */}
         <View style={styles.protectionCard}>
           <MaterialIcons name="verified" size={15} color={Colors.primaryGlow} />
@@ -288,6 +317,28 @@ export default function JobDetailScreen() {
           </View>
         </View>
       ) : null}
+
+      {/* Review customer — only for paid marketplace jobs */}
+      {job.status === 'paid' && job.source_job_post_id && customerId ? (
+        <Pressable
+          style={styles.reviewCustomerBtn}
+          onPress={() => setShowReviewModal(true)}
+        >
+          <MaterialIcons name="rate-review" size={16} color={Colors.textMuted} />
+          <Text style={styles.reviewCustomerText}>Leave a client review</Text>
+        </Pressable>
+      ) : null}
+
+      {job.source_job_post_id && customerId ? (
+        <CustomerReviewModal
+          visible={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          jobPostId={job.source_job_post_id}
+          customerId={customerId}
+          customerName={job.customer || 'Customer'}
+          jobTitle={job.title}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -376,4 +427,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.successDim, borderRadius: Radius.md, padding: 14,
   },
   paidText: { ...Typography.dataMD, color: Colors.success },
+  reviewCustomerBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    padding: 12, marginHorizontal: Spacing.md, marginBottom: 4,
+  },
+  reviewCustomerText: { ...Typography.labelSM, color: Colors.textMuted },
 });

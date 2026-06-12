@@ -9,6 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
+import { useReliability } from '@/hooks/useReliability';
+import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
 import { TRADE_CATEGORIES, SUBSCRIPTION } from '@/constants/config';
 import { useRole } from '@/hooks/useRole';
 import { useJobs } from '@/hooks/useJobs';
@@ -783,6 +785,9 @@ function CustomerProfileTab() {
   const [showSettings, setShowSettings] = useState(false);
   const [customerReviews, setCustomerReviews] = useState<any[]>([]);
 
+  // Customer sees their own reliability score
+  const { score: reliabilityScore } = useReliability(user?.id);
+
   // Fetch real reviews received as a customer
   React.useEffect(() => {
     if (!user?.id) return;
@@ -868,6 +873,17 @@ function CustomerProfileTab() {
             <Text style={styles.statLbl}>REVIEWS</Text>
           </View>
         </View>
+
+        {/* Customer reliability score — self-view */}
+        {reliabilityScore ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Your Client Reliability</Text>
+            <Text style={[Typography.labelSM, { color: Colors.textMuted }]}>
+              This score helps contractors understand what it is like to work with you.
+            </Text>
+            <ReliabilityBadge score={reliabilityScore} size="md" />
+          </View>
+        ) : null}
 
         {/* Past jobs */}
         <View style={styles.section}>
