@@ -142,11 +142,11 @@ export default function TabLayout() {
         }}
       />
 
-      {/* MARKETPLACE / SOCIAL */}
+      {/* MARKETPLACE */}
       <Tabs.Screen
         name="marketplace"
         options={{
-          title: 'Social',
+          title: 'Marketplace',
           tabBarIcon: ({ color, size }) => <MaterialIcons name="people" size={size} color={color} />,
         }}
       />

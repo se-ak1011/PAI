@@ -235,7 +235,7 @@ export default function MarketplaceScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <Text style={styles.title}>Social</Text>
+        <Text style={styles.title}>Marketplace</Text>
         <Pressable style={styles.bellBtn}>
           <MaterialIcons name="notifications-none" size={22} color={Colors.textSecondary} />
         </Pressable>
