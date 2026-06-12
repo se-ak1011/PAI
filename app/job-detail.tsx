@@ -9,7 +9,7 @@ import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useJobs } from '@/hooks/useJobs';
 import { useTaxPot } from '@/hooks/useTaxPot';
 import { useAlert } from '@/template';
-import { JOB_STATUS_ACTIONS } from '@/constants/config';
+import { JOB_STATUS_ACTIONS, PLATFORM_PRINCIPLES } from '@/constants/config';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -192,6 +192,12 @@ export default function JobDetailScreen() {
           </View>
         ) : null}
 
+        {/* Contractor protection notice */}
+        <View style={styles.protectionCard}>
+          <MaterialIcons name="verified" size={15} color={Colors.primaryGlow} />
+          <Text style={styles.protectionText}>{PLATFORM_PRINCIPLES.NO_COMMISSION}</Text>
+        </View>
+
         {/* Financial breakdown */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quote Breakdown</Text>
@@ -291,6 +297,12 @@ const styles = StyleSheet.create({
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
   notFoundText: { ...Typography.headingMD },
   backLink: { ...Typography.labelMD, color: Colors.primaryLight },
+  protectionCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: Colors.primaryDim, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.primaryLight, padding: 12,
+  },
+  protectionText: { ...Typography.labelSM, color: Colors.primaryGlow, flex: 1, lineHeight: 18 },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12, padding: Spacing.md,
     borderBottomWidth: 1, borderBottomColor: Colors.border,

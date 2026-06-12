@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { TRADE_CATEGORIES } from '@/constants/config';
+import { TRADE_CATEGORIES, PLATFORM_PRINCIPLES } from '@/constants/config';
 import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template';
@@ -333,6 +333,16 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
                       <Text style={styles.aiBlockLabel}>SCOPE OF WORK</Text>
                     </View>
                     <Text style={styles.aiScopeText}>{aiResult.scope}</Text>
+
+                  {/* ESTIMATE vs FINAL QUOTE disclaimer */}
+                  <View style={styles.estimateDisclaimerBox}>
+                    <View style={styles.estimateTagRow}>
+                      <View style={styles.estimateTag}><Text style={styles.estimateTagText}>ESTIMATE</Text></View>
+                      <MaterialIcons name="arrow-forward" size={12} color={Colors.textMuted} />
+                      <View style={styles.finalQuoteTag}><Text style={styles.finalQuoteTagText}>FINAL QUOTE</Text></View>
+                    </View>
+                    <Text style={styles.estimateDisclaimerText}>{PLATFORM_PRINCIPLES.ESTIMATE_DISCLAIMER}</Text>
+                  </View>
                   </View>
 
                   {/* Materials */}
@@ -615,6 +625,23 @@ const styles = StyleSheet.create({
   aiBlockHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   aiBlockLabel: { ...Typography.labelXS, color: Colors.primaryGlow },
   aiScopeText: { ...Typography.bodyMD, color: Colors.textSecondary, lineHeight: 22 },
+  // Estimate disclaimer
+  estimateDisclaimerBox: {
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.sm, borderWidth: 1,
+    borderColor: Colors.border, padding: 10, gap: 8,
+  },
+  estimateTagRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  estimateTag: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill,
+    backgroundColor: Colors.warningDim, borderWidth: 1, borderColor: Colors.warning,
+  },
+  estimateTagText: { fontSize: 9, fontWeight: '800', color: Colors.warning, letterSpacing: 0.8 },
+  finalQuoteTag: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill,
+    backgroundColor: Colors.primaryDim, borderWidth: 1, borderColor: Colors.primaryLight,
+  },
+  finalQuoteTagText: { fontSize: 9, fontWeight: '700', color: Colors.primaryGlow, letterSpacing: 0.5 },
+  estimateDisclaimerText: { ...Typography.labelSM, color: Colors.textMuted, lineHeight: 17 },
 
   // Material rows
   matRow: {

@@ -210,7 +210,7 @@ function EditProfileModal({
               <View style={editStyles.toggleRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={editStyles.toggleLabel}>Flexible pricing</Text>
-                  <Text style={editStyles.toggleSub}>AI quotes will show ranges instead of fixed prices</Text>
+                  <Text style={editStyles.toggleSub}>Open to negotiation. Customers see estimated price ranges before final quote approval.</Text>
                 </View>
                 <Switch
                   value={flexiblePricing}

@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { PButton, PInput } from '@/components';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { TRADE_CATEGORIES } from '@/constants/config';
+import { TRADE_CATEGORIES, PLATFORM_PRINCIPLES, SUBSCRIPTION } from '@/constants/config';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -79,7 +79,14 @@ export default function OnboardingScreen() {
               Your personal assistant for trades business. Let us set you up in a couple of minutes.
             </Text>
           </View>
-          <View style={styles.featureList}>
+          {/* PAI no-commission guarantee */}
+          {isContractor ? (
+            <View style={styles.principleCard}>
+              <MaterialIcons name="verified" size={16} color={Colors.primaryGlow} />
+              <Text style={styles.principleText}>{PLATFORM_PRINCIPLES.NO_COMMISSION}</Text>
+            </View>
+          ) : null}
+        <View style={styles.featureList}>
             {(isContractor ? [
               'AI-powered job quoting & invoicing',
               'Tax set-aside calculator',
@@ -304,6 +311,12 @@ const styles = StyleSheet.create({
   taxRateLabel: { ...Typography.dataLG, color: Colors.textMuted },
   taxRateLabelActive: { color: Colors.primaryGlow },
   taxCardDesc: { ...Typography.bodySM },
+  principleCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: Colors.primaryDim, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.primaryLight, padding: 14,
+  },
+  principleText: { ...Typography.labelMD, color: Colors.primaryGlow, flex: 1, lineHeight: 20 },
   featureList: { gap: 14 },
   featureItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   featureText: { ...Typography.bodyMD },
