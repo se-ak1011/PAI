@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { JobCard } from '@/components/feature/JobCard';
 import { CreateJobModal } from '@/components/feature/CreateJobModal';
+import { CreateInvoiceModal } from '@/components/feature/CreateInvoiceModal';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,6 +25,8 @@ export default function JobsScreen() {
   const { privateJobs, jobPosts } = useJobs();
   const [filter, setFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
   const showingContractor = isDualAccount
     ? activeRole === 'contractor'
@@ -56,7 +59,7 @@ export default function JobsScreen() {
             <Text style={styles.title}>My Jobs</Text>
             <Text style={styles.subtitle}>{privateJobs.length} total · £{totalValue.toLocaleString()} value</Text>
           </View>
-          <Pressable style={styles.addBtn} onPress={() => setShowModal(true)}>
+          <Pressable style={styles.addBtn} onPress={() => setShowAddMenu(true)}>
             <MaterialIcons name="add" size={22} color={Colors.textInverse} />
           </Pressable>
         </View>
@@ -120,6 +123,41 @@ export default function JobsScreen() {
         />
 
         <CreateJobModal visible={showModal} onClose={() => setShowModal(false)} />
+        <CreateInvoiceModal visible={showInvoiceModal} onClose={() => setShowInvoiceModal(false)} />
+
+        {/* Add menu overlay */}
+        {showAddMenu ? (
+          <Pressable style={styles.menuOverlay} onPress={() => setShowAddMenu(false)}>
+            <View style={styles.addMenu}>
+              <Pressable
+                style={styles.addMenuItem}
+                onPress={() => { setShowAddMenu(false); setShowModal(true); }}
+              >
+                <View style={styles.addMenuIconWrap}>
+                  <MaterialIcons name="auto-awesome" size={20} color={Colors.primaryGlow} />
+                </View>
+                <View style={styles.addMenuText}>
+                  <Text style={styles.addMenuLabel}>AI Job Quote</Text>
+                  <Text style={styles.addMenuSub}>Describe the job, AI builds the quote</Text>
+                </View>
+              </Pressable>
+              <View style={styles.addMenuDivider} />
+              <Pressable
+                style={styles.addMenuItem}
+                onPress={() => { setShowAddMenu(false); setShowInvoiceModal(true); }}
+              >
+                <View style={styles.addMenuIconWrap}>
+                  <MaterialIcons name="receipt-long" size={20} color={Colors.primaryGlow} />
+                </View>
+                <View style={styles.addMenuText}>
+                  <Text style={styles.addMenuLabel}>Quick Invoice</Text>
+                  <Text style={styles.addMenuSub}>For work done outside PAI</Text>
+                </View>
+              </Pressable>
+            </View>
+          </Pressable>
+        ) : null}
+
         <RoleSwitcherBar />
       </SafeAreaView>
     );
@@ -262,4 +300,24 @@ const styles = StyleSheet.create({
   postStatusOpen: { backgroundColor: Colors.primaryDim, borderColor: Colors.primary },
   postStatusText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5, color: Colors.textSecondary },
   postBudget: { ...Typography.dataLG, color: Colors.success },
+  // Add menu
+  menuOverlay: {
+    ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end', zIndex: 100,
+  },
+  addMenu: {
+    backgroundColor: Colors.card, borderRadius: Radius.xl,
+    borderWidth: 1, borderColor: Colors.border,
+    margin: Spacing.md, marginBottom: 100, overflow: 'hidden',
+  },
+  addMenuItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18,
+  },
+  addMenuIconWrap: {
+    width: 44, height: 44, borderRadius: Radius.md,
+    backgroundColor: Colors.primaryDim, alignItems: 'center', justifyContent: 'center',
+  },
+  addMenuText: { flex: 1, gap: 3 },
+  addMenuLabel: { ...Typography.dataMD },
+  addMenuSub: { ...Typography.labelSM, color: Colors.textMuted },
+  addMenuDivider: { height: 1, backgroundColor: Colors.border, marginHorizontal: 18 },
 });

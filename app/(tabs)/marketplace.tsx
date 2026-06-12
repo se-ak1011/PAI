@@ -13,8 +13,8 @@ import { RoleSwitcherBar } from './_layout';
 import { PostJobModal } from '@/components/feature/PostJobModal';
 import { getSupabaseClient } from '@/template';
 
-const TABS = ['Find Work', 'Tradespeople', 'Messages'] as const;
-type Tab = typeof TABS[number];
+const ALL_TABS = ['Find Work', 'Tradespeople'] as const;
+type Tab = typeof ALL_TABS[number];
 
 const BUDGET_FILTERS = [
   { label: 'Any', min: 0, max: Infinity },
@@ -42,7 +42,17 @@ export default function MarketplaceScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { jobPosts } = useJobs();
-  const [tab, setTab] = useState<Tab>('Find Work');
+
+  // Role-based tab visibility
+  const isContractor = user?.account_type === 'contractor' || user?.account_type === 'both';
+  const isCustomer = user?.account_type === 'customer' || user?.account_type === 'both';
+  const availableTabs: Tab[] = isContractor && isCustomer
+    ? ['Find Work', 'Tradespeople']
+    : isContractor
+    ? ['Find Work']
+    : ['Tradespeople'];
+
+  const [tab, setTab] = useState<Tab>(availableTabs[0]);
   const [search, setSearch] = useState('');
   const [tradeFilter, setTradeFilter] = useState('All');
   const [budgetFilter, setBudgetFilter] = useState(BUDGET_FILTERS[0]);
@@ -141,11 +151,12 @@ export default function MarketplaceScreen() {
       </View>
       <View style={styles.topDivider} />
 
-      {/* Tab switch */}
+      {/* Tab switch — only show if user has both roles */}
+      {availableTabs.length > 1 ? (
       <View style={styles.tabOuter}>
         <FlatList
           horizontal
-          data={TABS}
+          data={availableTabs}
           keyExtractor={i => i}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabList}
@@ -159,24 +170,9 @@ export default function MarketplaceScreen() {
           )}
         />
       </View>
+      ) : null}
 
-      {tab === 'Messages' ? (
-        <View style={styles.messagesEmpty}>
-          <View style={styles.messagesCard}>
-            <MaterialIcons name="chat-bubble-outline" size={40} color={Colors.textMuted} />
-            <Text style={styles.messagesTitle}>Messages live on each job</Text>
-            <Text style={styles.messagesSub}>
-              Conversations are tied to their job. Open a job post to message the other party.
-            </Text>
-            <Pressable
-              style={styles.browseBtn}
-              onPress={() => setTab('Find Work')}
-            >
-              <Text style={styles.browseBtnText}>Browse Jobs</Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : (
+      {(
         <>
           {/* Search */}
           <View style={styles.searchRow}>
@@ -241,7 +237,7 @@ export default function MarketplaceScreen() {
             />
           </View>
 
-          {tab === 'Find Work' ? (
+          {tab === 'Find Work' && isContractor ? (
             <FlatList
               data={filteredPosts}
               keyExtractor={item => item.id}
@@ -280,7 +276,7 @@ export default function MarketplaceScreen() {
                 />
               )}
             />
-          ) : (
+          ) : tab === 'Tradespeople' || !isContractor ? (
             <FlatList
               data={filteredContractors}
               keyExtractor={(item) => item.id}
@@ -325,7 +321,7 @@ export default function MarketplaceScreen() {
                 </Pressable>
               )}
             />
-          )}
+          ) : null}
         </>
       )}
 
@@ -381,18 +377,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18, paddingVertical: 10, marginTop: 8,
   },
   postJobBtnText: { ...Typography.btnSM, color: Colors.textInverse },
-  messagesEmpty: { flex: 1, padding: Spacing.md },
-  messagesCard: {
-    backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border,
-    padding: 32, alignItems: 'center', gap: 14,
-  },
-  messagesTitle: { ...Typography.headingMD, textAlign: 'center' },
-  messagesSub: { ...Typography.bodyMD, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },
-  browseBtn: {
-    marginTop: 4, backgroundColor: Colors.primary, borderRadius: Radius.md,
-    paddingHorizontal: 24, paddingVertical: 10,
-  },
-  browseBtnText: { ...Typography.btnSM, color: Colors.textInverse },
+
   contractorCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border,
