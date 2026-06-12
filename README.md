@@ -35,6 +35,33 @@ npm run reset-project
 npm run lint
 ```
 
+## Backend & Data Architecture
+
+PAI uses a single **OnSpace-hosted, Supabase-compatible backend** (not a native
+`*.supabase.co` project). Database, auth (email/password + Google OAuth) and
+edge functions all live on that one instance.
+
+- **Endpoint & credentials**: `EXPO_PUBLIC_SUPABASE_URL` and
+  `EXPO_PUBLIC_SUPABASE_ANON_KEY` in `.env`. Both are required at startup.
+- **Client**: created exactly once in `template/core/client.ts` and consumed
+  app-wide via `getSupabaseClient()` from `@/template`. Do not call
+  `createClient()` anywhere else.
+- **Auth**: implemented in `contexts/AuthContext.tsx` (the template's bundled
+  auth module was removed as dead code).
+- **Tables**: `user_profiles`, `job_posts`, `job_applications`, `private_jobs`,
+  `reviews`, `manual_income`, `disputes`, `customer_reliability_scores`.
+  No storage buckets are used yet; avatar/portfolio images are URL strings.
+- **Edge functions**: `supabase/functions/ai-quote/index.ts` is the source for
+  the AI quote generator (calls OpenAI server-side via `OPENAI_API_KEY` set in
+  the backend environment). The copy deployed on the OnSpace instance is what
+  runs — editing the file here has no effect until it is redeployed there.
+- **Schema & RLS**: managed on the OnSpace backend (no migrations in this
+  repo). Anything readable by the `anon` role is effectively public; review
+  RLS policies before exposing new data.
+- **Public URLs**: shareable contractor profile links are built by
+  `getContractorProfileUrl()` in `constants/config.ts`
+  (`https://pai.app/contractor/{id}`), served by the web build.
+
 ## Main Dependencies
 
 - React Native: 0.79.4
