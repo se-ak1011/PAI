@@ -489,6 +489,63 @@ function ContractorProfileTab() {
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
     : 0;
 
+  // ── Availability calendar ──────────────────────────────
+  const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const [availDays, setAvailDays] = React.useState<string[]>(user?.availability_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [savingAvail, setSavingAvail] = React.useState(false);
+
+  // Sync from user profile when it loads/changes
+  React.useEffect(() => {
+    if (user?.availability_days) setAvailDays(user.availability_days);
+  }, [user?.availability_days?.join(',')]);
+
+  const toggleDay = async (day: string) => {
+    const next = availDays.includes(day)
+      ? availDays.filter(d => d !== day)
+      : [...availDays, day];
+    setAvailDays(next);
+    setSavingAvail(true);
+    await updateProfile({ availability_days: next });
+    setSavingAvail(false);
+  };
+
+  function AvailabilityCalendar() {
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Availability</Text>
+          {savingAvail ? (
+            <ActivityIndicator size="small" color={Colors.primaryGlow} />
+          ) : (
+            <Text style={[Typography.labelXS, { color: Colors.textMuted }]}>TAP TO TOGGLE</Text>
+          )}
+        </View>
+        <View style={styles.calendarCard}>
+          <View style={calStyles.row}>
+            {ALL_DAYS.map(d => {
+              const on = availDays.includes(d);
+              return (
+                <Pressable
+                  key={d}
+                  style={[calStyles.cell, on ? calStyles.cellOn : calStyles.cellOff]}
+                  onPress={() => toggleDay(d)}
+                >
+                  <Text style={[calStyles.label, on ? calStyles.labelOn : calStyles.labelOff]}>{d}</Text>
+                  <View style={[calStyles.dot, on ? calStyles.dotOn : calStyles.dotOff]} />
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={calStyles.note}>
+            {availDays.length === 0
+              ? 'Mark yourself as unavailable'
+              : `Available ${availDays.length} day${availDays.length !== 1 ? 's' : ''} per week — visible on your public profile`}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   const portfolioPlaceholders = [
     'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=300&fit=crop',
     'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=300&fit=crop',
@@ -634,22 +691,7 @@ function ContractorProfileTab() {
         </View>
 
         {/* Availability Calendar */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Availability</Text>
-          <Pressable
-            style={styles.calendarCard}
-            onPress={() => showAlert('Coming Soon', 'Availability calendar coming soon. Customers will be able to see your availability when browsing your profile.')}
-          >
-            <View style={styles.calendarIcon}>
-              <MaterialIcons name="calendar-today" size={22} color={Colors.primaryGlow} />
-            </View>
-            <View style={styles.calendarInfo}>
-              <Text style={styles.calendarTitle}>Set your availability</Text>
-              <Text style={styles.calendarSub}>Customers can see when you are free</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={18} color={Colors.textMuted} />
-          </Pressable>
-        </View>
+        <AvailabilityCalendar />
 
         {/* Portfolio */}
         <View style={styles.section}>
@@ -908,6 +950,23 @@ export default function ProfileScreen() {
 // ─────────────────────────────────────────────
 // Shared Styles
 // ─────────────────────────────────────────────
+const calStyles = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 5 },
+  cell: {
+    flex: 1, alignItems: 'center', paddingVertical: 10,
+    borderRadius: Radius.md, borderWidth: 1, gap: 5,
+  },
+  cellOn: { backgroundColor: Colors.primaryDim, borderColor: Colors.primaryLight },
+  cellOff: { backgroundColor: Colors.cardAlt, borderColor: Colors.border },
+  label: { fontSize: 9, fontWeight: '700', letterSpacing: 0.3 },
+  labelOn: { color: Colors.primaryGlow },
+  labelOff: { color: Colors.textMuted },
+  dot: { width: 5, height: 5, borderRadius: 3 },
+  dotOn: { backgroundColor: Colors.primaryGlow },
+  dotOff: { backgroundColor: Colors.textMuted + '44' },
+  note: { ...Typography.labelSM, color: Colors.textMuted, textAlign: 'center' },
+});
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   topBar: {
@@ -991,17 +1050,9 @@ const styles = StyleSheet.create({
 
   // Calendar card
   calendarCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: Colors.card, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, padding: 16,
+    borderWidth: 1, borderColor: Colors.border, padding: 16, gap: 12,
   },
-  calendarIcon: {
-    width: 44, height: 44, borderRadius: 12,
-    backgroundColor: Colors.primaryDim, alignItems: 'center', justifyContent: 'center',
-  },
-  calendarInfo: { flex: 1, gap: 3 },
-  calendarTitle: { ...Typography.bodyMD },
-  calendarSub: { ...Typography.labelSM, color: Colors.textMuted },
 
   // Portfolio
   addPhotoBtn: {

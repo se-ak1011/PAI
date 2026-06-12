@@ -37,6 +37,8 @@ export interface UserProfile {
   portfolio_images?: string[];
   website?: string;
   social_links?: Record<string, string>;
+  // Availability
+  availability_days?: string[];
 }
 
 interface AuthContextType {
@@ -105,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       portfolio_images: data.portfolio_images || [],
       website: data.website,
       social_links: data.social_links || {},
+      availability_days: data.availability_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     };
   };
 
@@ -283,6 +286,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data.portfolio_images !== undefined) updateData.portfolio_images = data.portfolio_images;
     if (data.website !== undefined) updateData.website = data.website;
     if (data.social_links !== undefined) updateData.social_links = data.social_links;
+    if (data.availability_days !== undefined) updateData.availability_days = data.availability_days;
 
     await supabase.from('user_profiles').update(updateData).eq('id', user.id);
     setUser(prev => prev ? { ...prev, ...data } : null);

@@ -21,7 +21,13 @@ export default function TaxPotScreen() {
     ? allIncome
     : allIncome.filter(i => i.source === (incomeFilter === 'PAI' ? 'pai' : 'manual'));
 
-  const currentYear = 2026;
+  // UK tax year: 6 April → 5 April the following year
+  const now = new Date();
+  const taxYearStart = now >= new Date(now.getFullYear(), 3, 6)
+    ? new Date(now.getFullYear(), 3, 6)
+    : new Date(now.getFullYear() - 1, 3, 6);
+  const taxYearEnd = new Date(taxYearStart.getFullYear() + 1, 3, 5);
+  const taxYearLabel = `${taxYearStart.getFullYear()}/${String(taxYearEnd.getFullYear()).slice(-2)}`;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -82,7 +88,7 @@ export default function TaxPotScreen() {
 
         {/* Yearly Projection */}
         <View style={styles.projectionCard}>
-          <Text style={styles.projectionYear}>{currentYear} PROJECTION</Text>
+          <Text style={styles.projectionYear}>TAX YEAR {taxYearLabel} · ENDS 5 APR {taxYearEnd.getFullYear()}</Text>
           <View style={styles.projectionRows}>
             <View style={styles.projectionRow}>
               <Text style={styles.projectionLabel}>Your earnings (combined)</Text>
