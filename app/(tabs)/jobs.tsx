@@ -11,7 +11,6 @@ import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { RoleSwitcherBar } from './_layout';
 import { PostJobModal } from '@/components/feature/PostJobModal';
 
@@ -106,7 +105,7 @@ export default function JobsScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Image source={require('@/assets/images/empty-jobs.png')} style={styles.emptyImg} contentFit="contain" />
+              <MaterialIcons name="work-outline" size={48} color={Colors.textMuted} />
               <Text style={styles.emptyTitle}>No {filter !== 'All' ? filter.toLowerCase() : ''} jobs</Text>
               <Text style={styles.emptySubtitle}>Create a job to get started</Text>
               <Pressable style={styles.emptyBtn} onPress={() => setShowModal(true)}>
@@ -275,7 +274,6 @@ const styles = StyleSheet.create({
   filterTextActive: { color: Colors.textInverse, fontWeight: '600' },
   list: { padding: Spacing.md, paddingTop: Spacing.xs, paddingBottom: 100 },
   empty: { alignItems: 'center', paddingTop: Spacing.xxl, gap: 12 },
-  emptyImg: { width: 160, height: 160 },
   emptyTitle: { ...Typography.headingMD },
   emptySubtitle: { ...Typography.bodyMD, color: Colors.textMuted, textAlign: 'center' },
   emptyBtn: {
