@@ -13,7 +13,7 @@ import { RoleSwitcherBar } from './_layout';
 import { PostJobModal } from '@/components/feature/PostJobModal';
 import { getSupabaseClient } from '@/template';
 
-const ALL_TABS = ['Find Work', 'Tradespeople'] as const;
+const ALL_TABS = ['Find Work', 'Tradespeople', 'Trade Network'] as const;
 type Tab = typeof ALL_TABS[number];
 
 const BUDGET_FILTERS = [
@@ -38,19 +38,110 @@ interface PublicContractor {
   available?: boolean;
 }
 
+// ─────────────────────────────────────────────
+// Trade Network Tab — contractor-to-contractor hiring
+// ─────────────────────────────────────────────
+function TradeNetworkTab({
+  contractors,
+  contractorsLoading,
+  userCity,
+  onPress,
+}: {
+  contractors: PublicContractor[];
+  contractorsLoading: boolean;
+  userCity?: string;
+  onPress: (id: string) => void;
+}) {
+  return (
+    <FlatList
+      data={contractors}
+      keyExtractor={(item) => item.id}
+      contentContainerStyle={styles.list}
+      showsVerticalScrollIndicator={false}
+      ListHeaderComponent={
+        <>
+          <View style={styles.tradeNetworkBanner}>
+            <View style={styles.tradeNetworkBannerIcon}>
+              <MaterialIcons name="handshake" size={22} color={Colors.primaryGlow} />
+            </View>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={styles.tradeNetworkBannerTitle}>Contractor Network</Text>
+              <Text style={styles.tradeNetworkBannerText}>
+                Need another trade on a job? Browse registered PAI contractors to bring in for sub-contracts.
+                E.g. a bricklayer hiring a plumber — connect, agree a price, and track it through PAI.
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.resultCount}>
+            {contractorsLoading ? 'Loading...' : `${contractors.length} contractor${contractors.length !== 1 ? 's' : ''} on the network`}
+            {userCity && !contractorsLoading ? ` · near ${userCity}` : ''}
+          </Text>
+        </>
+      }
+      ListEmptyComponent={
+        <View style={styles.empty}>
+          <MaterialIcons name="groups" size={40} color={Colors.textMuted} />
+          <Text style={styles.emptyText}>No contractors found yet</Text>
+        </View>
+      }
+      renderItem={({ item }) => (
+        <Pressable
+          style={styles.contractorCard}
+          onPress={() => onPress(item.id)}
+        >
+          <View style={[styles.contractorIconWrap, { backgroundColor: Colors.infoDim }]}>
+            <MaterialIcons name="construction" size={22} color={Colors.info} />
+          </View>
+          <View style={styles.contractorInfo}>
+            <Text style={styles.contractorName}>{item.display_name}</Text>
+            <Text style={styles.contractorBusiness}>
+              {item.business_name || (item.trades || []).slice(0, 2).join(' · ') || 'Tradesperson'}
+            </Text>
+            <View style={styles.contractorMeta}>
+              <View style={styles.metaItem}>
+                <MaterialIcons name="location-on" size={13} color={Colors.textMuted} />
+                <Text style={styles.metaText}>{item.city || 'No location'}</Text>
+              </View>
+              {item.available !== false ? (
+                <View style={[styles.availDot, { backgroundColor: Colors.success + '44' }]}>
+                  <Text style={[styles.availText, { color: Colors.success }]}>Available</Text>
+                </View>
+              ) : (
+                <View style={[styles.availDot, { backgroundColor: Colors.errorDim }]}>
+                  <Text style={[styles.availText, { color: Colors.error }]}>Busy</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          {item.hourly_rate_from ? (
+            <View style={styles.contractorRight}>
+              <Text style={styles.rateLabel}>DAY</Text>
+              <Text style={styles.rate}>£{item.hourly_rate_from}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      )}
+    />
+  );
+}
+
 export default function MarketplaceScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { jobPosts } = useJobs();
 
   // Role-based tab visibility
+  // Customer-only accounts: Tradespeople only (they hire, not apply for work)
+  // Contractor/both accounts: Find Work + Trade Network (contractors can also hire trades)
+  // Both accounts: all three tabs
   const isContractor = user?.account_type === 'contractor' || user?.account_type === 'both';
   const isCustomer = user?.account_type === 'customer' || user?.account_type === 'both';
-  const availableTabs: Tab[] = isContractor && isCustomer
-    ? ['Find Work', 'Tradespeople']
-    : isContractor
-    ? ['Find Work']
-    : ['Tradespeople'];
+  const isCustomerOnly = user?.account_type === 'customer';
+  const availableTabs: Tab[] = isCustomerOnly
+    ? ['Tradespeople']
+    : isContractor && isCustomer
+    ? ['Find Work', 'Tradespeople', 'Trade Network']
+    : ['Find Work', 'Trade Network'];
 
   const [tab, setTab] = useState<Tab>(availableTabs[0]);
   const [search, setSearch] = useState('');
@@ -237,7 +328,9 @@ export default function MarketplaceScreen() {
             />
           </View>
 
-          {tab === 'Find Work' && isContractor ? (
+          {tab === 'Trade Network' ? (
+            <TradeNetworkTab contractors={filteredContractors} contractorsLoading={contractorsLoading} userCity={user?.city} onPress={(id) => router.push({ pathname: '/contractor-profile', params: { id } })} />
+          ) : tab === 'Find Work' && isContractor ? (
             <FlatList
               data={filteredPosts}
               keyExtractor={item => item.id}
@@ -276,7 +369,7 @@ export default function MarketplaceScreen() {
                 />
               )}
             />
-          ) : tab === 'Tradespeople' || !isContractor ? (
+          ) : tab === 'Tradespeople' ? (
             <FlatList
               data={filteredContractors}
               keyExtractor={(item) => item.id}
@@ -399,4 +492,17 @@ const styles = StyleSheet.create({
   rateLabel: { ...Typography.labelXS },
   rate: { ...Typography.dataLG },
   rateUnit: { ...Typography.labelSM },
+  // Trade Network banner
+  tradeNetworkBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    backgroundColor: Colors.infoDim, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.info + '66',
+    padding: 16, marginBottom: Spacing.sm,
+  },
+  tradeNetworkBannerIcon: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: Colors.primaryDim, alignItems: 'center', justifyContent: 'center',
+  },
+  tradeNetworkBannerTitle: { ...Typography.headingMD },
+  tradeNetworkBannerText: { ...Typography.labelSM, color: Colors.textSecondary, lineHeight: 18 },
 });
