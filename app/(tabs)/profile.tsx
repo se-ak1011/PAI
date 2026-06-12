@@ -4,6 +4,9 @@ import {
   View, Text, StyleSheet, ScrollView, Pressable, Switch, TextInput, Modal, ActivityIndicator, Share, Platform,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import QRCode from 'react-native-qrcode-svg';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -295,6 +298,111 @@ const editStyles = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────
+// QR Code Modal (contractor public profile)
+// ─────────────────────────────────────────────
+function QRCodeModal({
+  visible,
+  onClose,
+  autoDownload,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  autoDownload?: boolean;
+}) {
+  const { user } = useAuth();
+  const { showAlert } = useAlert();
+  const qrRef = React.useRef<any>(null);
+  const autoDone = React.useRef(false);
+
+  const profileUrl = user?.id ? getContractorProfileUrl(user.id) : '';
+
+  const handleDownload = React.useCallback(() => {
+    if (!qrRef.current?.toDataURL) {
+      showAlert('Not Ready', 'QR code is still rendering. Please try again.');
+      return;
+    }
+    qrRef.current.toDataURL(async (base64: string) => {
+      try {
+        if (Platform.OS === 'web') {
+          const link = document.createElement('a');
+          link.href = `data:image/png;base64,${base64}`;
+          link.download = 'pai-profile-qr.png';
+          link.click();
+        } else {
+          const fileUri = `${FileSystem.cacheDirectory}pai-profile-qr.png`;
+          await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+          await Sharing.shareAsync(fileUri, { mimeType: 'image/png', dialogTitle: 'Save your profile QR code' });
+        }
+      } catch (e: any) {
+        showAlert('Download Failed', e?.message || 'Could not export the QR code.');
+      }
+    });
+  }, [showAlert]);
+
+  // "Download QR Code" in settings opens this modal and triggers the
+  // export once the QR has rendered — the QR must be mounted to export.
+  React.useEffect(() => {
+    if (visible && autoDownload && !autoDone.current) {
+      autoDone.current = true;
+      const t = setTimeout(handleDownload, 600);
+      return () => clearTimeout(t);
+    }
+    if (!visible) autoDone.current = false;
+  }, [visible, autoDownload, handleDownload]);
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaView style={qrStyles.container} edges={['top', 'bottom']}>
+        <View style={qrStyles.header}>
+          <Pressable onPress={onClose} hitSlop={8}>
+            <MaterialIcons name="close" size={22} color={Colors.textSecondary} />
+          </Pressable>
+          <Text style={qrStyles.title}>Profile QR Code</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        <View style={qrStyles.body}>
+          <View style={qrStyles.qrCard}>
+            <QRCode
+              value={profileUrl || 'https://pai.app'}
+              size={220}
+              backgroundColor="#FFFFFF"
+              color="#000000"
+              quietZone={12}
+              getRef={(c: any) => { qrRef.current = c; }}
+            />
+          </View>
+          <Text style={qrStyles.urlText}>{profileUrl}</Text>
+          <Text style={qrStyles.hint}>Scanning this code opens your public contractor profile.</Text>
+          <Pressable style={qrStyles.downloadBtn} onPress={handleDownload}>
+            <MaterialIcons name="file-download" size={18} color={Colors.textInverse} />
+            <Text style={qrStyles.downloadBtnText}>Download QR Code</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+const qrStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.bg },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  title: { ...Typography.headingMD },
+  body: { flex: 1, alignItems: 'center', padding: Spacing.md, paddingTop: Spacing.xl, gap: Spacing.md },
+  qrCard: { backgroundColor: '#FFFFFF', borderRadius: Radius.lg, padding: 16 },
+  urlText: { ...Typography.labelMD, color: Colors.primaryGlow, textAlign: 'center' },
+  hint: { ...Typography.labelSM, color: Colors.textMuted, textAlign: 'center' },
+  downloadBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.primary, borderRadius: Radius.lg,
+    paddingHorizontal: 24, height: 48, marginTop: Spacing.sm,
+  },
+  downloadBtnText: { ...Typography.btnMD, color: Colors.textInverse },
+});
+
+// ─────────────────────────────────────────────
 // Settings Modal (shared)
 // ─────────────────────────────────────────────
 function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -302,6 +410,10 @@ function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => 
   const { showAlert } = useAlert();
   const router = useRouter();
   const [available, setAvailable] = useState(user?.available ?? true);
+  const [qrVisible, setQrVisible] = useState(false);
+  const [qrAutoDownload, setQrAutoDownload] = useState(false);
+
+  const isContractor = user?.account_type === 'contractor' || user?.account_type === 'both';
 
   const handleLogout = () => {
     showAlert('Sign Out', 'Are you sure you want to sign out?', [
@@ -359,6 +471,10 @@ function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => 
   };
 
   const rows = [
+    ...(isContractor ? [
+      { icon: 'qr-code-2', label: 'View QR Code', action: () => { setQrAutoDownload(false); setQrVisible(true); } },
+      { icon: 'file-download', label: 'Download QR Code', action: () => { setQrAutoDownload(true); setQrVisible(true); } },
+    ] : []),
     { icon: 'notifications-none', label: 'Notifications', action: () => showAlert('Coming Soon', 'Notification settings coming soon.') },
     { icon: 'lock-outline', label: 'Password & Security', action: () => showAlert('Coming Soon', 'Security settings coming soon.') },
     { icon: 'payment', label: 'Subscription & Billing', action: () => showAlert('Subscription', 'Manage your £25/month contractor subscription. Payments via Stripe coming soon.') },
@@ -424,6 +540,8 @@ function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => 
             <Text style={settStyles.deleteAccountText}>Delete Account</Text>
           </Pressable>
         </ScrollView>
+        {/* Nested so it presents above this open modal on iOS */}
+        <QRCodeModal visible={qrVisible} onClose={() => setQrVisible(false)} autoDownload={qrAutoDownload} />
       </SafeAreaView>
     </Modal>
   );
