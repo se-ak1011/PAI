@@ -1,8 +1,9 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { getSupabaseClient } from '@/template';
-import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 
 export type UserRole = 'contractor' | 'customer' | 'both';
+export type SubscriptionStatus = 'free_trial' | 'active' | 'past_due' | 'cancelled';
 
 export interface UserProfile {
   id: string;
@@ -14,6 +15,7 @@ export interface UserProfile {
   bio?: string;
   trades?: string[];
   hourly_rate_from?: number;
+  hourly_rate?: number;
   city?: string;
   postcode_area?: string;
   avatar_url?: string;
@@ -21,9 +23,20 @@ export interface UserProfile {
   available?: boolean;
   onboarding_complete?: boolean;
   preferred_shop?: string;
-  hourly_rate?: number;
   flexible_pricing?: boolean;
   customer_profile_complete?: boolean;
+  // Subscription
+  subscription_status?: SubscriptionStatus;
+  trial_ends_at?: string | null;
+  trial_started_at?: string | null;
+  stripe_customer_id?: string | null;
+  // Saved marketplace preferences
+  saved_trades?: string[];
+  saved_postcode_areas?: string[];
+  // Portfolio
+  portfolio_images?: string[];
+  website?: string;
+  social_links?: Record<string, string>;
 }
 
 interface AuthContextType {
@@ -59,16 +72,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('id', userId)
       .single();
     if (error || !data) return null;
+
+    const accountType = (data.account_type as UserRole) ?? 'contractor';
+
     return {
       id: data.id,
       email: data.email,
       username: data.username,
       display_name: data.username || data.email?.split('@')[0],
-      account_type: (data.account_type as UserRole) ?? 'contractor',
+      account_type: accountType,
       business_name: data.business_name,
       bio: data.bio,
       trades: data.trades || [],
       hourly_rate_from: data.hourly_rate_from,
+      hourly_rate: data.hourly_rate,
       city: data.city,
       postcode_area: data.postcode_area,
       avatar_url: data.avatar_url,
@@ -76,9 +93,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       available: data.available ?? true,
       onboarding_complete: data.onboarding_complete ?? false,
       preferred_shop: data.preferred_shop,
-      hourly_rate: data.hourly_rate,
       flexible_pricing: data.flexible_pricing ?? false,
       customer_profile_complete: data.customer_profile_complete ?? false,
+      subscription_status: (data.subscription_status as SubscriptionStatus) ?? 'free_trial',
+      trial_ends_at: data.trial_ends_at ?? null,
+      trial_started_at: data.trial_started_at ?? null,
+      stripe_customer_id: data.stripe_customer_id ?? null,
+      saved_trades: data.saved_trades || [],
+      saved_postcode_areas: data.saved_postcode_areas || [],
+      portfolio_images: data.portfolio_images || [],
+      website: data.website,
+      social_links: data.social_links || {},
     };
   };
 
@@ -132,7 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setOperationLoading(false);
     if (error) return { error: error.message };
-    // Set a temporary profile so onboarding can read account_type
     if (data.user) {
       setUser({
         id: data.user.id,
@@ -140,6 +164,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         display_name: name,
         account_type: accountType,
         onboarding_complete: false,
+        subscription_status: 'free_trial',
+        trial_ends_at: null,
       });
     }
     return { error: null };
@@ -147,16 +173,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async (role: UserRole = 'contractor'): Promise<{ error: string | null }> => {
     setOperationLoading(true);
-    // Store intended role so the auth state change handler can apply it after OAuth redirect
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: undefined,
-          queryParams: {
-            // Pass role as a hint; onboarding will confirm it
-            prompt: 'select_account',
-          },
+          queryParams: { prompt: 'select_account' },
         },
       });
       setOperationLoading(false);
@@ -177,9 +199,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const completeOnboarding = async (data: Partial<UserProfile>) => {
     if (!user) return;
     setOperationLoading(true);
+
+    // Ensure account_type is valid — never allow null
+    const accountType: UserRole = data.account_type || user.account_type || 'contractor';
+
     const updateData: Record<string, unknown> = {
       onboarding_complete: true,
-      account_type: data.account_type || user.account_type,
+      account_type: accountType,
     };
     if (data.display_name) updateData.username = data.display_name;
     if (data.business_name) updateData.business_name = data.business_name;
@@ -189,6 +215,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data.trades) updateData.trades = data.trades;
     if (data.hourly_rate_from !== undefined) updateData.hourly_rate_from = data.hourly_rate_from;
     if (data.tax_rate) updateData.tax_rate = data.tax_rate;
+
+    // Set trial for contractor/both accounts
+    if (accountType === 'contractor' || accountType === 'both') {
+      const now = new Date();
+      updateData.subscription_status = 'free_trial';
+      updateData.trial_started_at = now.toISOString();
+      updateData.trial_ends_at = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    } else {
+      // customers have no subscription requirement
+      updateData.subscription_status = 'active';
+    }
 
     const { error } = await supabase
       .from('user_profiles')
@@ -205,19 +242,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (data: Partial<UserProfile>) => {
     if (!user) return;
     const updateData: Record<string, unknown> = {};
-    if (data.display_name) updateData.username = data.display_name;
+    if (data.display_name !== undefined) updateData.username = data.display_name;
     if (data.business_name !== undefined) updateData.business_name = data.business_name;
     if (data.city !== undefined) updateData.city = data.city;
     if (data.postcode_area !== undefined) updateData.postcode_area = data.postcode_area;
     if (data.bio !== undefined) updateData.bio = data.bio;
     if (data.trades !== undefined) updateData.trades = data.trades;
     if (data.hourly_rate_from !== undefined) updateData.hourly_rate_from = data.hourly_rate_from;
+    if (data.hourly_rate !== undefined) updateData.hourly_rate = data.hourly_rate;
     if (data.tax_rate !== undefined) updateData.tax_rate = data.tax_rate;
     if (data.available !== undefined) updateData.available = data.available;
     if (data.preferred_shop !== undefined) updateData.preferred_shop = data.preferred_shop;
-    if (data.hourly_rate !== undefined) updateData.hourly_rate = data.hourly_rate;
     if (data.flexible_pricing !== undefined) updateData.flexible_pricing = data.flexible_pricing;
     if (data.customer_profile_complete !== undefined) updateData.customer_profile_complete = data.customer_profile_complete;
+    if (data.saved_trades !== undefined) updateData.saved_trades = data.saved_trades;
+    if (data.saved_postcode_areas !== undefined) updateData.saved_postcode_areas = data.saved_postcode_areas;
+    if (data.portfolio_images !== undefined) updateData.portfolio_images = data.portfolio_images;
+    if (data.website !== undefined) updateData.website = data.website;
+    if (data.social_links !== undefined) updateData.social_links = data.social_links;
 
     await supabase.from('user_profiles').update(updateData).eq('id', user.id);
     setUser(prev => prev ? { ...prev, ...data } : null);
@@ -248,4 +290,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+// ─── Subscription helpers ───────────────────────────────────
+export function isContractorTrialActive(user: UserProfile | null): boolean {
+  if (!user) return false;
+  if (user.account_type === 'customer') return false;
+  if (user.subscription_status === 'active') return false;
+  if (!user.trial_ends_at) return true; // no end date = still in grace
+  return new Date(user.trial_ends_at) > new Date();
+}
+
+export function getTrialDaysLeft(user: UserProfile | null): number {
+  if (!user?.trial_ends_at) return 14;
+  const diff = Math.ceil((new Date(user.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, diff);
+}
+
+export function isSubscriptionActive(user: UserProfile | null): boolean {
+  if (!user) return false;
+  if (user.account_type === 'customer') return true; // customers always free
+  return user.subscription_status === 'active' || isContractorTrialActive(user);
 }

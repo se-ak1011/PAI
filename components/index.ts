@@ -7,3 +7,4 @@ export { JobCard } from './feature/JobCard';
 export { MarketplaceCard } from './feature/MarketplaceCard';
 export { AddIncomeModal } from './feature/AddIncomeModal';
 export { CreateJobModal } from './feature/CreateJobModal';
+export { PostJobModal } from './feature/PostJobModal';

@@ -41,9 +41,14 @@ export default function OnboardingScreen() {
   };
 
   const handleFinish = async () => {
+    // Prevent null account_type — must be set before completing onboarding
+    if (!accountType) {
+      showAlert('Account type missing', 'Please restart setup.');
+      return;
+    }
     await completeOnboarding({
       account_type: accountType,
-      display_name: displayName,
+      display_name: displayName || undefined,
       business_name: businessName || undefined,
       city: city || undefined,
       postcode_area: postcode || undefined,

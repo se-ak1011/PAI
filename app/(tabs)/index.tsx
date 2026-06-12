@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, Pressable, Dimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Image } from 'expo-image';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, getTrialDaysLeft, isSubscriptionActive } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useJobs } from '@/hooks/useJobs';
 import { useTaxPot } from '@/hooks/useTaxPot';
 import { AddIncomeModal } from '@/components/feature/AddIncomeModal';
 import { CreateJobModal } from '@/components/feature/CreateJobModal';
+import { PostJobModal } from '@/components/feature/PostJobModal';
 import { MaterialIcons } from '@expo/vector-icons';
 import { RoleSwitcherBar } from './_layout';
 
@@ -29,14 +31,6 @@ function getDateLabel(): string {
   }).toUpperCase();
 }
 
-function getTrialDaysLeft(trialStarted?: string | null): number {
-  if (!trialStarted) return 14;
-  const start = new Date(trialStarted);
-  const expiry = new Date(start.getTime() + 14 * 24 * 60 * 60 * 1000);
-  const diff = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  return Math.max(0, diff);
-}
-
 // ─────────────────────────────────────────────
 // Contractor Dashboard
 // ─────────────────────────────────────────────
@@ -48,21 +42,37 @@ function ContractorDashboard() {
   const [showIncome, setShowIncome] = useState(false);
   const [showJob, setShowJob] = useState(false);
 
-  const activeJobs = privateJobs.filter(j => j.status === 'active' || j.status === 'quoted');
+  const activeJobs = privateJobs.filter(j => ['active', 'in_progress', 'accepted'].includes(j.status));
   const invoicedJobs = privateJobs.filter(j => j.status === 'invoiced');
   const totalEarnings = privateJobs
     .filter(j => j.status === 'paid')
     .reduce((s, j) => s + j.total, 0);
 
-  const trialDays = getTrialDaysLeft((user as any)?.trial_started_at);
-  const isOnTrial = trialDays > 0;
+  const trialDays = getTrialDaysLeft(user);
+  const subActive = isSubscriptionActive(user);
+  const isOnTrial = user?.subscription_status === 'free_trial' && trialDays > 0;
 
-  // "Get set up" checklist
   const setupItems = [
-    { label: 'Complete your profile', done: !!(user?.city && user?.trades?.length), route: '/(tabs)/profile' },
-    { label: 'Connect payouts (Stripe)', done: false, route: '/(tabs)/profile' },
-    { label: 'Add availability', done: false, route: '/(tabs)/profile' },
-    { label: 'Send your first quote', done: privateJobs.length > 0, route: '/(tabs)/jobs' },
+    {
+      label: 'Complete your profile',
+      done: !!(user?.city && user?.trades?.length),
+      route: '/(tabs)/profile',
+    },
+    {
+      label: 'Add your rates',
+      done: !!(user?.hourly_rate_from || user?.hourly_rate),
+      route: '/(tabs)/profile',
+    },
+    {
+      label: 'Connect payouts (Stripe)',
+      done: false,
+      route: '/(tabs)/profile',
+    },
+    {
+      label: 'Send your first quote',
+      done: privateJobs.length > 0,
+      route: '/(tabs)/jobs',
+    },
   ];
   const doneCount = setupItems.filter(i => i.done).length;
   const setupProgress = doneCount / setupItems.length;
@@ -71,7 +81,6 @@ function ContractorDashboard() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="light" />
 
-      {/* Top bar */}
       <View style={styles.topBar}>
         <Text style={styles.dashTitle}>Dashboard</Text>
         <Pressable style={styles.bellBtn} onPress={() => {}}>
@@ -81,7 +90,6 @@ function ContractorDashboard() {
       <View style={styles.topDivider} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Greeting */}
         <View style={styles.greetRow}>
           <Text style={styles.dateLabel}>{getDateLabel()}</Text>
           <Text style={styles.greetLine}>
@@ -108,7 +116,7 @@ function ContractorDashboard() {
           </View>
         </View>
 
-        {/* Trial/Subscription Card */}
+        {/* Trial / Subscription Card */}
         {isOnTrial ? (
           <View style={styles.trialCard}>
             <View style={styles.trialHeader}>
@@ -120,7 +128,7 @@ function ContractorDashboard() {
               <Text style={styles.trialPriceSub}>/month after trial</Text>
             </Text>
             <Text style={styles.trialSubtext}>
-              You keep 100% of every job — We don&apos;t take a cut!
+              Flat fee. No job cuts. Keep 100% of every payment.
             </Text>
             <Pressable
               style={styles.addPaymentBtn}
@@ -129,9 +137,20 @@ function ContractorDashboard() {
               <Text style={styles.addPaymentBtnText}>Add payment method</Text>
             </Pressable>
           </View>
+        ) : user?.subscription_status === 'past_due' ? (
+          <View style={[styles.trialCard, { borderColor: Colors.error }]}>
+            <View style={styles.trialHeader}>
+              <MaterialIcons name="warning" size={16} color={Colors.error} />
+              <Text style={[styles.trialBadge, { color: Colors.error }]}>PAYMENT DUE</Text>
+            </View>
+            <Text style={styles.trialSubtext}>Your subscription payment failed. Update your payment method to continue using contractor tools.</Text>
+            <Pressable style={[styles.addPaymentBtn, { backgroundColor: Colors.error }]} onPress={() => {}}>
+              <Text style={styles.addPaymentBtnText}>Update payment method</Text>
+            </Pressable>
+          </View>
         ) : null}
 
-        {/* Get set up checklist */}
+        {/* Get set up */}
         {doneCount < setupItems.length ? (
           <View style={styles.setupCard}>
             <View style={styles.setupHeader}>
@@ -139,7 +158,7 @@ function ContractorDashboard() {
               <Text style={styles.setupCount}>{doneCount}/{setupItems.length} done</Text>
             </View>
             <View style={styles.setupBar}>
-              <View style={[styles.setupBarFill, { width: `${setupProgress * 100}%` }]} />
+              <View style={[styles.setupBarFill, { width: `${setupProgress * 100}%` as any }]} />
             </View>
             {setupItems.map(item => (
               <Pressable key={item.label} style={styles.setupItem} onPress={() => router.push(item.route as any)}>
@@ -155,7 +174,7 @@ function ContractorDashboard() {
           </View>
         ) : null}
 
-        {/* 2x2 Quick Actions */}
+        {/* Quick Actions */}
         <View style={styles.quickGrid}>
           <Pressable style={styles.quickBtn} onPress={() => setShowJob(true)}>
             <MaterialIcons name="add" size={26} color={Colors.primaryGlow} />
@@ -239,6 +258,7 @@ function CustomerDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const { jobPosts } = useJobs();
+  const [showPostJob, setShowPostJob] = useState(false);
 
   const myPosts = jobPosts.filter(p => p.client_id === user?.id);
   const openPosts = myPosts.filter(p => p.status === 'open');
@@ -254,7 +274,6 @@ function CustomerDashboard() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="light" />
 
-      {/* Top bar */}
       <View style={styles.topBar}>
         <Text style={styles.dashTitle}>Dashboard</Text>
         <Pressable style={styles.bellBtn}>
@@ -264,7 +283,6 @@ function CustomerDashboard() {
       <View style={styles.topDivider} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Greeting */}
         <View style={styles.greetRow}>
           <Text style={styles.customerModeLabel}>CUSTOMER</Text>
           <Text style={styles.greetLine}>
@@ -272,7 +290,6 @@ function CustomerDashboard() {
           </Text>
         </View>
 
-        {/* YOUR JOBS card */}
         <View style={styles.earningsCard}>
           <Text style={styles.earningsCardLabel}>YOUR JOBS</Text>
           <Text style={styles.earningsAmount}>{myPosts.length}</Text>
@@ -288,9 +305,8 @@ function CustomerDashboard() {
           </View>
         </View>
 
-        {/* 2x2 Quick Actions */}
         <View style={styles.quickGrid}>
-          <Pressable style={styles.quickBtn} onPress={() => router.push('/(tabs)/marketplace')}>
+          <Pressable style={styles.quickBtn} onPress={() => setShowPostJob(true)}>
             <MaterialIcons name="add" size={26} color={Colors.primaryGlow} />
             <Text style={styles.quickLabel}>Post a job</Text>
           </Pressable>
@@ -303,12 +319,11 @@ function CustomerDashboard() {
             <Text style={styles.quickLabel}>Trades near me</Text>
           </Pressable>
           <Pressable style={styles.quickBtn} onPress={() => router.push('/(tabs)/marketplace')}>
-            <MaterialIcons name="chat-bubble-outline" size={26} color={Colors.primaryGlow} />
-            <Text style={styles.quickLabel}>Messages</Text>
+            <MaterialIcons name="storefront" size={26} color={Colors.primaryGlow} />
+            <Text style={styles.quickLabel}>Find trades</Text>
           </Pressable>
         </View>
 
-        {/* Get set up */}
         {doneCount < setupItems.length ? (
           <View style={styles.setupCard}>
             <View style={styles.setupHeader}>
@@ -316,7 +331,7 @@ function CustomerDashboard() {
               <Text style={styles.setupCount}>{doneCount}/{setupItems.length} done</Text>
             </View>
             <View style={styles.setupBar}>
-              <View style={[styles.setupBarFill, { width: `${(doneCount / setupItems.length) * 100}%` }]} />
+              <View style={[styles.setupBarFill, { width: `${(doneCount / setupItems.length) * 100}%` as any }]} />
             </View>
             {setupItems.map(item => (
               <Pressable key={item.label} style={styles.setupItem} onPress={() => router.push(item.route as any)}>
@@ -332,7 +347,6 @@ function CustomerDashboard() {
           </View>
         ) : null}
 
-        {/* Recent activity */}
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Recent activity</Text>
         </View>
@@ -358,102 +372,7 @@ function CustomerDashboard() {
       </ScrollView>
 
       <RoleSwitcherBar />
-    </SafeAreaView>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Profile Dashboard (dual accounts only)
-// ─────────────────────────────────────────────
-function ProfileDashboard() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const { jobPosts } = useJobs();
-
-  const myPosts = jobPosts.filter(p => p.client_id === user?.id);
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar style="light" />
-      <View style={styles.topBar}>
-        <Text style={styles.dashTitle}>Profile</Text>
-        <View style={styles.topBarRight}>
-          <Pressable style={styles.iconBtn} onPress={() => {}}>
-            <MaterialIcons name="edit" size={18} color={Colors.textSecondary} />
-          </Pressable>
-          <Pressable style={styles.iconBtn} onPress={() => router.push('/(tabs)/profile')}>
-            <MaterialIcons name="settings" size={18} color={Colors.textSecondary} />
-          </Pressable>
-          <Pressable style={styles.bellBtn}>
-            <MaterialIcons name="notifications-none" size={22} color={Colors.textSecondary} />
-          </Pressable>
-        </View>
-      </View>
-      <View style={styles.topDivider} />
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Profile card */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileAvatar}>
-            {user?.avatar_url ? (
-              <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} contentFit="cover" />
-            ) : (
-              <MaterialIcons name="person" size={36} color={Colors.textInverse} />
-            )}
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.display_name}</Text>
-            <View style={styles.profileLocRow}>
-              <MaterialIcons name="location-on" size={14} color={Colors.textMuted} />
-              <Text style={styles.profileLoc}>{user?.city || 'Location not set'}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Recent jobs */}
-        <Text style={styles.sectionTitle}>Your recent jobs</Text>
-        {myPosts.length === 0 ? (
-          <Text style={styles.emptyInline}>You haven&apos;t posted any jobs yet.</Text>
-        ) : (
-          myPosts.slice(0, 3).map(p => (
-            <View key={p.id} style={styles.jobRow}>
-              <View style={styles.jobRowLeft}>
-                <Text style={styles.jobRowTitle}>{p.title}</Text>
-                <Text style={styles.jobRowSub}>{p.city}</Text>
-              </View>
-              <Text style={styles.jobRowAmount}>£{p.budget.toLocaleString()}</Text>
-            </View>
-          ))
-        )}
-
-        {/* Trades near you */}
-        <Text style={[styles.sectionTitle, { marginTop: Spacing.md }]}>Trades near you</Text>
-        {[
-          { name: 'Alex Painter', trade: 'Painter & Decorator', city: 'London' },
-          { name: 'Jordan Sparks', trade: 'Electrician', city: 'London' },
-          { name: 'Riley Both', trade: 'Handyman', city: 'London' },
-        ].map(c => (
-          <Pressable
-            key={c.name}
-            style={styles.tradeCard}
-            onPress={() => router.push('/(tabs)/marketplace')}
-          >
-            <View style={styles.tradeIconCircle}>
-              <MaterialIcons name="construction" size={18} color={Colors.primaryGlow} />
-            </View>
-            <View style={styles.tradeInfo}>
-              <Text style={styles.tradeName}>{c.name}</Text>
-              <Text style={styles.tradeSub}>{c.trade}</Text>
-              <View style={styles.tradeLocRow}>
-                <MaterialIcons name="location-on" size={12} color={Colors.textMuted} />
-                <Text style={styles.tradeLoc}>{c.city}</Text>
-              </View>
-            </View>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      <RoleSwitcherBar />
+      <PostJobModal visible={showPostJob} onClose={() => setShowPostJob(false)} />
     </SafeAreaView>
   );
 }
@@ -463,14 +382,13 @@ function ProfileDashboard() {
 // ─────────────────────────────────────────────
 export default function DashboardScreen() {
   const { activeRole, isDualAccount } = useRole();
+  const { user } = useAuth();
 
   if (isDualAccount) {
     if (activeRole === 'contractor') return <ContractorDashboard />;
     if (activeRole === 'customer') return <CustomerDashboard />;
-    if (activeRole === 'profile') return <ProfileDashboard />;
   }
 
-  const { user } = useAuth();
   if (user?.account_type === 'customer') return <CustomerDashboard />;
   return <ContractorDashboard />;
 }
@@ -484,33 +402,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: Spacing.md, paddingVertical: 12,
   },
-  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dashTitle: { ...Typography.brandMD },
   bellBtn: { padding: 4 },
-  iconBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: Colors.card,
-    borderWidth: 1, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
   topDivider: { height: 1, backgroundColor: Colors.border },
   scroll: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 120 },
-
-  // Greeting
   greetRow: { gap: 4 },
   dateLabel: { ...Typography.labelXS, color: Colors.textMuted },
   customerModeLabel: { ...Typography.labelXS, color: Colors.textMuted },
   greetLine: { fontSize: 36, fontStyle: 'italic', fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5 },
   greetName: { color: Colors.primaryGlow },
-
-  // Earnings card
   earningsCard: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 20,
-    gap: 12,
+    backgroundColor: Colors.card, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, padding: 20, gap: 12,
   },
   earningsCardLabel: { ...Typography.labelXS },
   earningsAmount: { fontSize: 42, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -1 },
@@ -518,15 +421,9 @@ const styles = StyleSheet.create({
   earningsRow: { flexDirection: 'row', gap: 40 },
   earningsSub: { ...Typography.labelXS, marginBottom: 2 },
   earningsSubVal: { ...Typography.dataMD },
-
-  // Trial card
   trialCard: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 20,
-    gap: 10,
+    backgroundColor: Colors.card, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, padding: 20, gap: 10,
   },
   trialHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   trialBadge: { ...Typography.labelXS, color: Colors.primaryGlow, letterSpacing: 0.8 },
@@ -535,23 +432,13 @@ const styles = StyleSheet.create({
   trialPriceSub: { fontSize: 18, fontStyle: 'italic', fontWeight: '400', color: Colors.textSecondary },
   trialSubtext: { ...Typography.bodySM, color: Colors.textSecondary },
   addPaymentBtn: {
-    height: 52,
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
+    height: 52, backgroundColor: Colors.primary, borderRadius: Radius.lg,
+    alignItems: 'center', justifyContent: 'center', marginTop: 4,
   },
   addPaymentBtnText: { ...Typography.btnMD, color: Colors.textInverse },
-
-  // Setup card
   setupCard: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 18,
-    gap: 0,
+    backgroundColor: Colors.card, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, padding: 18, gap: 0,
   },
   setupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   setupTitle: { ...Typography.brandSM },
@@ -560,8 +447,7 @@ const styles = StyleSheet.create({
   setupBarFill: { height: 3, backgroundColor: Colors.primary, borderRadius: 2 },
   setupItem: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingVertical: 13,
-    borderTopWidth: 1, borderTopColor: Colors.border,
+    paddingVertical: 13, borderTopWidth: 1, borderTopColor: Colors.border,
   },
   setupCheck: {
     width: 22, height: 22, borderRadius: 11,
@@ -571,26 +457,16 @@ const styles = StyleSheet.create({
   setupCheckDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   setupItemText: { ...Typography.bodyMD, flex: 1 },
   setupItemTextDone: { color: Colors.textMuted, textDecorationLine: 'line-through' },
-
-  // Quick grid
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   quickBtn: {
     width: (width - Spacing.md * 2 - 10) / 2,
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 20,
-    gap: 10,
+    backgroundColor: Colors.card, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, padding: 20, gap: 10,
   },
   quickLabel: { ...Typography.bodyMD },
-
-  // Section headers
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { ...Typography.brandSM },
   sectionValue: { ...Typography.dataMD, color: Colors.textSecondary },
-
-  // Job rows
   jobRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border,
@@ -600,46 +476,9 @@ const styles = StyleSheet.create({
   jobRowTitle: { ...Typography.dataMD },
   jobRowSub: { ...Typography.labelSM },
   jobRowAmount: { ...Typography.dataMD, color: Colors.success },
-
-  // Empty states
   emptyCard: {
     backgroundColor: Colors.card, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: 28, alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.border, padding: 28, alignItems: 'center',
   },
   emptyCardText: { ...Typography.bodyMD, color: Colors.textMuted, textAlign: 'center' },
-  emptyInline: { ...Typography.bodyMD, color: Colors.textMuted },
-
-  // Profile dashboard
-  profileCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 16,
-    backgroundColor: Colors.card, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, padding: 18,
-  },
-  profileAvatar: {
-    width: 64, height: 64, borderRadius: 16,
-    backgroundColor: Colors.primary,
-    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-  },
-  avatarImg: { width: 64, height: 64 },
-  profileInfo: { flex: 1, gap: 6 },
-  profileName: { ...Typography.brandSM },
-  profileLocRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  profileLoc: { ...Typography.labelMD },
-
-  // Trade cards
-  tradeCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.card, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, padding: 16,
-  },
-  tradeIconCircle: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: Colors.primaryDim, alignItems: 'center', justifyContent: 'center',
-  },
-  tradeInfo: { flex: 1, gap: 2 },
-  tradeName: { ...Typography.dataMD },
-  tradeSub: { ...Typography.labelMD },
-  tradeLocRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-  tradeLoc: { ...Typography.labelSM },
 });

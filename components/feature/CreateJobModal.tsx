@@ -113,18 +113,31 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
   // ── Step 2: Save job ────────────────────────────────────────
   const handleSave = async () => {
     if (!jobTitle.trim() || !user?.id) return;
+
+    // Validate AI output before persisting — never insert malformed data
+    const safeLabour = typeof labourNum === 'number' && isFinite(labourNum) && labourNum >= 0 ? labourNum : 0;
+    const safeMaterials = typeof materialsNum === 'number' && isFinite(materialsNum) && materialsNum >= 0 ? materialsNum : 0;
+    const safeVat = Math.round((safeLabour + safeMaterials) * 0.2 * 100) / 100;
+    const safeTotal = safeLabour + safeMaterials + safeVat;
+    const safeMaterialItems = (aiResult?.materials || []).filter(
+      (m): m is { name: string; qty: number; unit: string; estimatedPrice: number } =>
+        typeof m.name === 'string' && m.name.length > 0 &&
+        typeof m.qty === 'number' && isFinite(m.qty) && m.qty > 0 &&
+        typeof m.estimatedPrice === 'number' && isFinite(m.estimatedPrice)
+    );
+
     setSaving(true);
     await addPrivateJob({
       contractor_id: user.id,
-      title: jobTitle,
-      customer: customer || 'New Customer',
-      description: aiResult?.scope || description,
+      title: jobTitle.trim().slice(0, 200),
+      customer: (customer || 'New Customer').trim().slice(0, 100),
+      description: (aiResult?.scope || description).trim().slice(0, 5000),
       status: 'draft',
-      total,
-      labour: labourNum,
-      materials: materialsNum,
-      vat,
-      materials_items: aiResult?.materials || [],
+      total: safeTotal,
+      labour: safeLabour,
+      materials: safeMaterials,
+      vat: safeVat,
+      materials_items: safeMaterialItems,
       receipts: [],
       invoiced_at: null,
       paid_at: null,

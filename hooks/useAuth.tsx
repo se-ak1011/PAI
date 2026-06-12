@@ -7,4 +7,5 @@ export function useAuth() {
   return context;
 }
 
-export type { UserProfile, UserRole } from '@/contexts/AuthContext';
+export type { UserProfile, UserRole, SubscriptionStatus } from '@/contexts/AuthContext';
+export { getTrialDaysLeft, isContractorTrialActive, isSubscriptionActive } from '@/contexts/AuthContext';

@@ -1,20 +1,36 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { PBadge } from '@/components/ui/PBadge';
-import { PButton } from '@/components/ui/PButton';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useJobs } from '@/hooks/useJobs';
 import { useAlert } from '@/template';
+import { JOB_STATUS_ACTIONS } from '@/constants/config';
 import { MaterialIcons } from '@expo/vector-icons';
 
-const STATUS_ACTIONS: Record<string, { label: string; next: string }> = {
-  draft: { label: 'Send Quote', next: 'quoted' },
-  quoted: { label: 'Mark Active', next: 'active' },
-  active: { label: 'Send Invoice', next: 'invoiced' },
-  invoiced: { label: 'Mark as Paid', next: 'paid' },
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'DRAFT',
+  sent: 'QUOTE SENT',
+  accepted: 'ACCEPTED',
+  in_progress: 'IN PROGRESS',
+  contractor_marked_done: 'AWAITING INVOICE',
+  invoiced: 'INVOICED',
+  paid: 'PAID',
+  cancelled: 'CANCELLED',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: Colors.textMuted,
+  sent: Colors.info,
+  accepted: Colors.primaryGlow,
+  in_progress: Colors.primaryGlow,
+  contractor_marked_done: Colors.warning,
+  invoiced: Colors.warning,
+  paid: Colors.success,
+  cancelled: Colors.error,
 };
 
 export default function JobDetailScreen() {
@@ -24,6 +40,7 @@ export default function JobDetailScreen() {
   const { showAlert } = useAlert();
 
   const job = privateJobs.find(j => j.id === id);
+  const [updating, setUpdating] = useState(false);
 
   if (!job) {
     return (
@@ -38,34 +55,45 @@ export default function JobDetailScreen() {
     );
   }
 
-  const nextAction = STATUS_ACTIONS[job.status];
+  const nextAction = JOB_STATUS_ACTIONS[job.status];
+  const statusColor = STATUS_COLORS[job.status] ?? Colors.textMuted;
+  const statusLabel = STATUS_LABELS[job.status] ?? job.status.toUpperCase();
 
-  const handleStatusUpdate = () => {
+  const handleStatusUpdate = async () => {
     if (!nextAction) return;
-    const updates: any = { status: nextAction.next };
+    setUpdating(true);
+    const updates: Record<string, unknown> = { status: nextAction.next };
     if (nextAction.next === 'invoiced') updates.invoiced_at = new Date().toISOString().split('T')[0];
     if (nextAction.next === 'paid') updates.paid_at = new Date().toISOString().split('T')[0];
-    updatePrivateJob(job.id, updates);
+    await updatePrivateJob(job.id, updates);
+    setUpdating(false);
   };
 
   const handleDelete = () => {
     showAlert('Delete Job', 'This will permanently delete this job. Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { deletePrivateJob(job.id); router.back(); } },
+      {
+        text: 'Delete', style: 'destructive', onPress: async () => {
+          await deletePrivateJob(job.id);
+          router.back();
+        },
+      },
     ]);
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar style="light" />
-      {/* Header */}
+
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
           <MaterialIcons name="arrow-back" size={22} color={Colors.textSecondary} />
         </Pressable>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle} numberOfLines={1}>{job.title}</Text>
-          <PBadge label={job.status} variant={job.status as any} />
+          <View style={[styles.statusBadge, { borderColor: statusColor + '60', backgroundColor: statusColor + '1A' }]}>
+            <Text style={[styles.statusBadgeText, { color: statusColor }]}>{statusLabel}</Text>
+          </View>
         </View>
         <Pressable onPress={handleDelete} hitSlop={8}>
           <MaterialIcons name="delete-outline" size={22} color={Colors.error} />
@@ -73,7 +101,7 @@ export default function JobDetailScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Customer & Date */}
+        {/* Customer & Dates */}
         <View style={styles.metaCard}>
           <View style={styles.metaRow}>
             <MaterialIcons name="person" size={16} color={Colors.textMuted} />
@@ -83,11 +111,11 @@ export default function JobDetailScreen() {
           <View style={styles.metaRow}>
             <MaterialIcons name="calendar-today" size={16} color={Colors.textMuted} />
             <Text style={styles.metaLabel}>CREATED</Text>
-            <Text style={styles.metaValue}>{job.created_at}</Text>
+            <Text style={styles.metaValue}>{new Date(job.created_at).toLocaleDateString('en-GB')}</Text>
           </View>
           {job.invoiced_at ? (
             <View style={styles.metaRow}>
-              <MaterialIcons name="receipt" size={16} color={Colors.textMuted} />
+              <MaterialIcons name="receipt" size={16} color={Colors.warning} />
               <Text style={styles.metaLabel}>INVOICED</Text>
               <Text style={styles.metaValue}>{job.invoiced_at}</Text>
             </View>
@@ -106,6 +134,26 @@ export default function JobDetailScreen() {
               <Text style={[styles.metaValue, { color: Colors.primaryGlow }]}>PAI Marketplace</Text>
             </View>
           ) : null}
+        </View>
+
+        {/* Status timeline */}
+        <View style={styles.timeline}>
+          {['draft', 'sent', 'accepted', 'in_progress', 'contractor_marked_done', 'invoiced', 'paid'].map((s, i) => {
+            const statuses = ['draft', 'sent', 'accepted', 'in_progress', 'contractor_marked_done', 'invoiced', 'paid'];
+            const currentIdx = statuses.indexOf(job.status);
+            const isDone = i < currentIdx;
+            const isCurrent = s === job.status;
+            return (
+              <View key={s} style={styles.timelineItem}>
+                <View style={[styles.timelineDot, isDone && styles.timelineDotDone, isCurrent && styles.timelineDotCurrent]}>
+                  {isDone ? <MaterialIcons name="check" size={10} color={Colors.textInverse} /> : null}
+                </View>
+                <Text style={[styles.timelineLabel, isCurrent && styles.timelineLabelCurrent, isDone && styles.timelineLabelDone]}>
+                  {STATUS_LABELS[s] ?? s}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* Description */}
@@ -140,37 +188,42 @@ export default function JobDetailScreen() {
           </View>
         </View>
 
-        {/* Materials items */}
-        {job.materials_items.length > 0 ? (
+        {/* Materials */}
+        {job.materials_items && job.materials_items.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Materials List</Text>
-            {job.materials_items.map((item, i) => (
+            {job.materials_items.map((item: any, i: number) => (
               <View key={i} style={styles.materialRow}>
                 <Text style={styles.materialName}>{item.name}</Text>
-                <Text style={styles.materialQty}>×{item.qty}</Text>
-                <Text style={styles.materialPrice}>£{(item.qty * item.price).toFixed(2)}</Text>
+                <Text style={styles.materialQty}>
+                  {item.qty} {item.unit || '×'}
+                </Text>
+                <Text style={styles.materialPrice}>
+                  £{(item.estimatedPrice ?? (item.qty * (item.price ?? 0))).toFixed(2)}
+                </Text>
               </View>
             ))}
           </View>
-        ) : null}
-
-        {/* AI Assist */}
-        {job.status === 'draft' ? (
-          <Pressable style={styles.aiCard} onPress={() => useAlert}>
-            <MaterialIcons name="auto-awesome" size={20} color={Colors.primaryGlow} />
-            <View style={styles.aiCardText}>
-              <Text style={styles.aiTitle}>AI Assistant</Text>
-              <Text style={styles.aiSubtitle}>Analyse photos, generate scope, suggest materials pricing</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
-          </Pressable>
         ) : null}
       </ScrollView>
 
       {/* Action Footer */}
       {nextAction ? (
         <View style={styles.footer}>
-          <PButton label={nextAction.label} onPress={handleStatusUpdate} fullWidth />
+          <Pressable
+            style={[styles.actionBtn, updating && styles.actionBtnDisabled]}
+            onPress={handleStatusUpdate}
+            disabled={updating}
+          >
+            {updating ? (
+              <ActivityIndicator size="small" color={Colors.textInverse} />
+            ) : (
+              <>
+                <MaterialIcons name="arrow-forward" size={18} color={Colors.textInverse} />
+                <Text style={styles.actionBtnText}>{nextAction.label}</Text>
+              </>
+            )}
+          </Pressable>
         </View>
       ) : job.status === 'paid' ? (
         <View style={styles.footer}>
@@ -196,15 +249,39 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   headerCenter: { flex: 1, gap: 4 },
   headerTitle: { ...Typography.headingMD },
+  statusBadge: {
+    alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: Radius.pill, borderWidth: 1,
+  },
+  statusBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
   scroll: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 120 },
-  metaCard: { backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 16, gap: 12 },
+  metaCard: {
+    backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
+    borderColor: Colors.border, padding: 16, gap: 12,
+  },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  metaLabel: { ...Typography.labelXS, width: 72 },
+  metaLabel: { ...Typography.labelXS, width: 80 },
   metaValue: { ...Typography.bodyMD, flex: 1 },
+  // Timeline
+  timeline: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  timelineItem: { flex: 1, alignItems: 'center', gap: 4 },
+  timelineDot: {
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: Colors.cardAlt, borderWidth: 1.5, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  timelineDotDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  timelineDotCurrent: { borderColor: Colors.primaryGlow, borderWidth: 2 },
+  timelineLabel: { fontSize: 8, fontWeight: '500', color: Colors.textMuted, textAlign: 'center', letterSpacing: 0.3 },
+  timelineLabelCurrent: { color: Colors.primaryGlow },
+  timelineLabelDone: { color: Colors.textSecondary },
   section: { gap: 12 },
   sectionTitle: { ...Typography.headingMD },
   description: { ...Typography.bodyMD, color: Colors.textSecondary, lineHeight: 22 },
-  breakdownCard: { backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 16, gap: 10 },
+  breakdownCard: {
+    backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
+    borderColor: Colors.border, padding: 16, gap: 10,
+  },
   breakdownRow: { flexDirection: 'row', justifyContent: 'space-between' },
   breakdownLabel: { ...Typography.labelMD, color: Colors.textSecondary },
   breakdownValue: { ...Typography.dataMD },
@@ -219,15 +296,16 @@ const styles = StyleSheet.create({
   materialName: { ...Typography.bodyMD, flex: 1 },
   materialQty: { ...Typography.labelMD, color: Colors.textMuted },
   materialPrice: { ...Typography.dataMD },
-  aiCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.primaryDim, borderRadius: Radius.lg, padding: 16,
-    borderWidth: 1, borderColor: Colors.primary,
-  },
-  aiCardText: { flex: 1, gap: 3 },
-  aiTitle: { ...Typography.dataMD, color: Colors.primaryGlow },
-  aiSubtitle: { ...Typography.labelSM, color: Colors.textSecondary },
   footer: { padding: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.bg },
-  paidBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: Colors.successDim, borderRadius: Radius.md, padding: 14 },
+  actionBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    height: 54, backgroundColor: Colors.primary, borderRadius: Radius.lg,
+  },
+  actionBtnDisabled: { opacity: 0.5 },
+  actionBtnText: { ...Typography.btnMD, color: Colors.textInverse },
+  paidBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: Colors.successDim, borderRadius: Radius.md, padding: 14,
+  },
   paidText: { ...Typography.dataMD, color: Colors.success },
 });

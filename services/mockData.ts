@@ -1,3 +1,9 @@
+// ─────────────────────────────────────────────────────────────────────────
+// MOCK DATA — DEV/DEMO USE ONLY
+// Import DEV_MODE from constants/config.ts and guard usage with it.
+// In production, all data must come from Supabase directly.
+// ─────────────────────────────────────────────────────────────────────────
+
 import { TAX_RATES } from '@/constants/config';
 
 export const MOCK_CONTRACTOR = {

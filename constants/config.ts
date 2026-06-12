@@ -1,6 +1,23 @@
 export const APP_NAME = 'PAI';
 export const APP_TAGLINE = 'Your trades business, sorted.';
 
+// ─── Subscription ───────────────────────────────────────────
+// Customers: always free
+// Contractors / Both: 14-day free trial → £25/month flat fee
+export const SUBSCRIPTION = {
+  TRIAL_DAYS: 14,
+  MONTHLY_FEE_GBP: 25,
+  CONTRACTOR_TOOLS: [
+    'AI quoting & invoicing',
+    'Tax Pot tracker',
+    'Job tracking pipeline',
+    'Marketplace applications',
+    'Contractor public profile',
+    'Availability calendar',
+    'Payouts via Stripe',
+  ],
+};
+
 export const TAX_RATES = {
   CIS: 0.20,
   SELF_EMPLOYED: 0.30,
@@ -31,16 +48,31 @@ export const INCOME_CATEGORIES = [
   'Electrical',
   'Carpentry',
   'General Labour',
+  'Roofing',
+  'Tiling',
   'Other',
 ];
 
+// Job lifecycle statuses (contractor private jobs)
 export const JOB_STATUSES = {
   DRAFT: 'draft',
   QUOTED: 'quoted',
-  ACTIVE: 'active',
+  SENT: 'sent',
+  ACCEPTED: 'accepted',
+  IN_PROGRESS: 'in_progress',
+  CONTRACTOR_DONE: 'contractor_marked_done',
   INVOICED: 'invoiced',
   PAID: 'paid',
   CANCELLED: 'cancelled',
+};
+
+export const JOB_STATUS_ACTIONS: Record<string, { label: string; next: string }> = {
+  draft: { label: 'Send Quote', next: 'sent' },
+  sent: { label: 'Mark Accepted', next: 'accepted' },
+  accepted: { label: 'Start Job', next: 'in_progress' },
+  in_progress: { label: 'Mark Complete', next: 'contractor_marked_done' },
+  contractor_marked_done: { label: 'Send Invoice', next: 'invoiced' },
+  invoiced: { label: 'Mark as Paid', next: 'paid' },
 };
 
 export const JOB_POST_STATUSES = {
@@ -50,8 +82,6 @@ export const JOB_POST_STATUSES = {
   CANCELLED: 'cancelled',
 };
 
-export const SUBSCRIPTION_PLANS = [
-  { id: 'free', name: 'Free', price: 0, features: ['3 active jobs', 'Basic quoting', 'Tax pot tracker'] },
-  { id: 'pro', name: 'Pro', price: 19.99, features: ['Unlimited jobs', 'AI quoting', 'Priority marketplace', 'Invoice PDF export', 'Advanced analytics'] },
-  { id: 'elite', name: 'Elite', price: 39.99, features: ['Everything in Pro', 'Featured profile', 'Dedicated support', 'Custom branding'] },
-];
+// ─── Dev mode ───────────────────────────────────────────────
+// Set to true only during local development to show mock data
+export const DEV_MODE = false;

@@ -7,10 +7,11 @@ import { MarketplaceCard } from '@/components/feature/MarketplaceCard';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
-import { useRole } from '@/hooks/useRole';
-import { MOCK_CONTRACTORS_PUBLIC } from '@/services/mockData';
+import { TRADE_CATEGORIES } from '@/constants/config';
 import { MaterialIcons } from '@expo/vector-icons';
 import { RoleSwitcherBar } from './_layout';
+import { PostJobModal } from '@/components/feature/PostJobModal';
+import { getSupabaseClient } from '@/template';
 
 const TABS = ['Find Work', 'Tradespeople', 'Messages'] as const;
 type Tab = typeof TABS[number];
@@ -23,18 +24,69 @@ const BUDGET_FILTERS = [
   { label: '£10k+', min: 10000, max: Infinity },
 ];
 
+interface PublicContractor {
+  id: string;
+  display_name: string;
+  business_name?: string;
+  trades?: string[];
+  hourly_rate_from?: number;
+  hourly_rate?: number;
+  city?: string;
+  postcode_area?: string;
+  avatar_url?: string;
+  rating?: number;
+  available?: boolean;
+}
+
 export default function MarketplaceScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { jobPosts } = useJobs();
-  const { activeRole, isDualAccount, isContractorAccount } = useRole();
   const [tab, setTab] = useState<Tab>('Find Work');
   const [search, setSearch] = useState('');
   const [tradeFilter, setTradeFilter] = useState('All');
   const [budgetFilter, setBudgetFilter] = useState(BUDGET_FILTERS[0]);
+  const [showPostJob, setShowPostJob] = useState(false);
+  const [contractors, setContractors] = React.useState<PublicContractor[]>([]);
+  const [contractorsLoading, setContractorsLoading] = React.useState(false);
 
-  const trades = ['All', 'Electrical', 'Plumbing', 'Carpentry', 'Painting', 'Roofing'];
   const userCity = user?.city?.toLowerCase();
+  // Use saved preferences for smart sorting
+  const savedTrades = user?.saved_trades || [];
+  const savedPostcodes = user?.saved_postcode_areas || [];
+
+  const allTrades = ['All', ...TRADE_CATEGORIES];
+
+  // Load contractors from Supabase when Tradespeople tab is selected
+  React.useEffect(() => {
+    if (tab !== 'Tradespeople') return;
+    const loadContractors = async () => {
+      setContractorsLoading(true);
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('id, username, business_name, trades, hourly_rate_from, hourly_rate, city, postcode_area, avatar_url, available, flexible_pricing')
+        .in('account_type', ['contractor', 'both'])
+        .eq('onboarding_complete', true);
+
+      if (!error && data) {
+        setContractors(data.map(c => ({
+          id: c.id,
+          display_name: c.username || 'Tradesperson',
+          business_name: c.business_name,
+          trades: c.trades || [],
+          hourly_rate_from: c.hourly_rate_from,
+          hourly_rate: c.hourly_rate,
+          city: c.city,
+          postcode_area: c.postcode_area,
+          avatar_url: c.avatar_url,
+          available: c.available,
+        })));
+      }
+      setContractorsLoading(false);
+    };
+    loadContractors();
+  }, [tab]);
 
   const filteredPosts = jobPosts
     .filter(p => p.status === 'open')
@@ -42,24 +94,34 @@ export default function MarketplaceScreen() {
     .filter(p => p.budget >= budgetFilter.min && p.budget <= budgetFilter.max)
     .filter(p => search === '' || p.title.toLowerCase().includes(search.toLowerCase()) || (p.city ?? '').toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
-      if (!userCity) return 0;
-      const aLocal = (a.city ?? '').toLowerCase().includes(userCity);
-      const bLocal = (b.city ?? '').toLowerCase().includes(userCity);
-      if (aLocal && !bLocal) return -1;
-      if (!aLocal && bLocal) return 1;
+      // Prioritise by saved trades, then saved postcodes, then city match
+      const aTradeMatch = savedTrades.length > 0 && savedTrades.includes(a.trade);
+      const bTradeMatch = savedTrades.length > 0 && savedTrades.includes(b.trade);
+      if (aTradeMatch && !bTradeMatch) return -1;
+      if (!aTradeMatch && bTradeMatch) return 1;
+      const aPostcodeMatch = savedPostcodes.length > 0 && savedPostcodes.some(pc => (a.postcode_area ?? '').toLowerCase().startsWith(pc.toLowerCase()));
+      const bPostcodeMatch = savedPostcodes.length > 0 && savedPostcodes.some(pc => (b.postcode_area ?? '').toLowerCase().startsWith(pc.toLowerCase()));
+      if (aPostcodeMatch && !bPostcodeMatch) return -1;
+      if (!aPostcodeMatch && bPostcodeMatch) return 1;
+      if (userCity) {
+        const aLocal = (a.city ?? '').toLowerCase().includes(userCity);
+        const bLocal = (b.city ?? '').toLowerCase().includes(userCity);
+        if (aLocal && !bLocal) return -1;
+        if (!aLocal && bLocal) return 1;
+      }
       return 0;
     });
 
-  const filteredContractors = MOCK_CONTRACTORS_PUBLIC
-    .filter((c: any) => tradeFilter === 'All' || c.trades?.includes(tradeFilter))
-    .filter((c: any) => {
+  const filteredContractors = contractors
+    .filter(c => tradeFilter === 'All' || (c.trades || []).includes(tradeFilter))
+    .filter(c => {
       if (budgetFilter.max !== Infinity && c.hourly_rate_from) {
         return c.hourly_rate_from <= budgetFilter.max;
       }
       return true;
     })
-    .filter((c: any) => search === '' || c.display_name?.toLowerCase().includes(search.toLowerCase()) || c.city?.toLowerCase().includes(search.toLowerCase()))
-    .sort((a: any, b: any) => {
+    .filter(c => search === '' || (c.display_name ?? '').toLowerCase().includes(search.toLowerCase()) || (c.city ?? '').toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
       if (!userCity) return 0;
       const aLocal = (a.city ?? '').toLowerCase().includes(userCity);
       const bLocal = (b.city ?? '').toLowerCase().includes(userCity);
@@ -104,8 +166,14 @@ export default function MarketplaceScreen() {
             <MaterialIcons name="chat-bubble-outline" size={40} color={Colors.textMuted} />
             <Text style={styles.messagesTitle}>Messages live on each job</Text>
             <Text style={styles.messagesSub}>
-              Conversations are tied to the job they are about. Open a job to chat with the other party.
+              Conversations are tied to their job. Open a job post to message the other party.
             </Text>
+            <Pressable
+              style={styles.browseBtn}
+              onPress={() => setTab('Find Work')}
+            >
+              <Text style={styles.browseBtnText}>Browse Jobs</Text>
+            </Pressable>
           </View>
         </View>
       ) : (
@@ -131,7 +199,7 @@ export default function MarketplaceScreen() {
           <View style={styles.filtersOuter}>
             <FlatList
               horizontal
-              data={trades}
+              data={allTrades}
               keyExtractor={i => i}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.filterList}
@@ -180,14 +248,29 @@ export default function MarketplaceScreen() {
               contentContainerStyle={styles.list}
               showsVerticalScrollIndicator={false}
               ListHeaderComponent={
-                <Text style={styles.resultCount}>
-                  {filteredPosts.length} open {tradeFilter !== 'All' ? tradeFilter.toLowerCase() : ''} job{filteredPosts.length !== 1 ? 's' : ''}{userCity ? ` · near ${user?.city}` : ''}
-                </Text>
+                <>
+                  {savedTrades.length > 0 ? (
+                    <View style={styles.preferenceNote}>
+                      <MaterialIcons name="tune" size={12} color={Colors.primaryGlow} />
+                      <Text style={styles.preferenceNoteText}>
+                        Sorted by your saved trades: {savedTrades.join(', ')}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <Text style={styles.resultCount}>
+                    {filteredPosts.length} open {tradeFilter !== 'All' ? tradeFilter.toLowerCase() : ''} job{filteredPosts.length !== 1 ? 's' : ''}
+                    {userCity ? ` · near ${user?.city}` : ''}
+                  </Text>
+                </>
               }
               ListEmptyComponent={
                 <View style={styles.empty}>
                   <MaterialIcons name="work-off" size={40} color={Colors.textMuted} />
                   <Text style={styles.emptyText}>No matching jobs found</Text>
+                  <Pressable style={styles.postJobBtn} onPress={() => setShowPostJob(true)}>
+                    <MaterialIcons name="add" size={16} color={Colors.textInverse} />
+                    <Text style={styles.postJobBtnText}>Post a Job</Text>
+                  </Pressable>
                 </View>
               }
               renderItem={({ item }) => (
@@ -200,15 +283,16 @@ export default function MarketplaceScreen() {
           ) : (
             <FlatList
               data={filteredContractors}
-              keyExtractor={(item: any) => item.id}
+              keyExtractor={(item) => item.id}
               contentContainerStyle={styles.list}
               showsVerticalScrollIndicator={false}
               ListHeaderComponent={
                 <Text style={styles.resultCount}>
-                  {filteredContractors.length} tradesperson{filteredContractors.length !== 1 ? 's' : ''} found{userCity ? ` · near ${user?.city}` : ''}
+                  {contractorsLoading ? 'Loading...' : `${filteredContractors.length} tradesperson${filteredContractors.length !== 1 ? 's' : ''} found`}
+                  {userCity && !contractorsLoading ? ` · near ${user?.city}` : ''}
                 </Text>
               }
-              renderItem={({ item }: { item: any }) => (
+              renderItem={({ item }) => (
                 <Pressable
                   style={styles.contractorCard}
                   onPress={() => router.push({ pathname: '/contractor-profile', params: { id: item.id } })}
@@ -218,25 +302,26 @@ export default function MarketplaceScreen() {
                   </View>
                   <View style={styles.contractorInfo}>
                     <Text style={styles.contractorName}>{item.display_name}</Text>
-                    <Text style={styles.contractorBusiness}>{item.business_name || item.trades?.[0] || ''}</Text>
+                    <Text style={styles.contractorBusiness}>{item.business_name || (item.trades || [])[0] || ''}</Text>
                     <View style={styles.contractorMeta}>
-                      {item.rating ? (
-                        <View style={styles.metaItem}>
-                          <MaterialIcons name="star" size={13} color={Colors.warning} />
-                          <Text style={styles.metaText}>{item.rating}</Text>
-                        </View>
-                      ) : null}
                       <View style={styles.metaItem}>
                         <MaterialIcons name="location-on" size={13} color={Colors.textMuted} />
-                        <Text style={styles.metaText}>{item.city}</Text>
+                        <Text style={styles.metaText}>{item.city || 'No location'}</Text>
                       </View>
+                      {item.available !== false ? (
+                        <View style={[styles.availDot, { backgroundColor: Colors.success + '44' }]}>
+                          <Text style={[styles.availText, { color: Colors.success }]}>Available</Text>
+                        </View>
+                      ) : null}
                     </View>
                   </View>
-                  <View style={styles.contractorRight}>
-                    <Text style={styles.rateLabel}>FROM</Text>
-                    <Text style={styles.rate}>£{item.hourly_rate_from}</Text>
-                    <Text style={styles.rateUnit}>/day</Text>
-                  </View>
+                  {item.hourly_rate_from ? (
+                    <View style={styles.contractorRight}>
+                      <Text style={styles.rateLabel}>FROM</Text>
+                      <Text style={styles.rate}>£{item.hourly_rate_from}</Text>
+                      <Text style={styles.rateUnit}>/day</Text>
+                    </View>
+                  ) : null}
                 </Pressable>
               )}
             />
@@ -245,6 +330,7 @@ export default function MarketplaceScreen() {
       )}
 
       <RoleSwitcherBar />
+      <PostJobModal visible={showPostJob} onClose={() => setShowPostJob(false)} />
     </SafeAreaView>
   );
 }
@@ -279,10 +365,22 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   chipText: { ...Typography.labelMD, color: Colors.textSecondary },
   chipTextActive: { color: Colors.textInverse, fontWeight: '600' },
+  preferenceNote: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.primaryDim, borderRadius: Radius.sm, padding: 8,
+    borderWidth: 1, borderColor: Colors.primaryLight, marginBottom: 8,
+  },
+  preferenceNoteText: { ...Typography.labelSM, color: Colors.primaryGlow, flex: 1 },
   resultCount: { ...Typography.labelSM, marginBottom: Spacing.sm },
   list: { padding: Spacing.md, paddingTop: Spacing.xs, paddingBottom: 120 },
   empty: { alignItems: 'center', paddingTop: Spacing.xxl, gap: 12 },
   emptyText: { ...Typography.bodyMD, color: Colors.textMuted },
+  postJobBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.primary, borderRadius: Radius.md,
+    paddingHorizontal: 18, paddingVertical: 10, marginTop: 8,
+  },
+  postJobBtnText: { ...Typography.btnSM, color: Colors.textInverse },
   messagesEmpty: { flex: 1, padding: Spacing.md },
   messagesCard: {
     backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border,
@@ -290,6 +388,11 @@ const styles = StyleSheet.create({
   },
   messagesTitle: { ...Typography.headingMD, textAlign: 'center' },
   messagesSub: { ...Typography.bodyMD, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+  browseBtn: {
+    marginTop: 4, backgroundColor: Colors.primary, borderRadius: Radius.md,
+    paddingHorizontal: 24, paddingVertical: 10,
+  },
+  browseBtnText: { ...Typography.btnSM, color: Colors.textInverse },
   contractorCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border,
@@ -302,9 +405,11 @@ const styles = StyleSheet.create({
   contractorInfo: { flex: 1, gap: 3 },
   contractorName: { ...Typography.dataMD },
   contractorBusiness: { ...Typography.labelSM },
-  contractorMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  contractorMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metaText: { ...Typography.labelSM },
+  availDot: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.pill },
+  availText: { fontSize: 10, fontWeight: '600' },
   contractorRight: { alignItems: 'flex-end', gap: 2 },
   rateLabel: { ...Typography.labelXS },
   rate: { ...Typography.dataLG },

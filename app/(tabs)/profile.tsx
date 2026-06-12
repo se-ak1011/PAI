@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, Switch, TextInput, Modal, ActivityIndicator,
@@ -8,10 +9,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
-import { TRADE_CATEGORIES } from '@/constants/config';
+import { TRADE_CATEGORIES, SUBSCRIPTION } from '@/constants/config';
 import { useRole } from '@/hooks/useRole';
 import { useJobs } from '@/hooks/useJobs';
-import { MOCK_REVIEWS } from '@/services/mockData';
+import { getSupabaseClient } from '@/template';
+// MOCK_REVIEWS removed — reviews now fetched from Supabase below
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAlert } from '@/template';
 import { RoleSwitcherBar } from './_layout';
@@ -59,6 +61,8 @@ function EditProfileModal({
   const [flexiblePricing, setFlexiblePricing] = useState((user as any)?.flexible_pricing ?? false);
   const [selectedTrades, setSelectedTrades] = useState<string[]>(user?.trades || []);
   const [website, setWebsite] = useState((user as any)?.website || '');
+  const [savedTrades, setSavedTrades] = useState<string[]>(user?.saved_trades || []);
+  const [savedPostcodes, setSavedPostcodes] = useState<string>((user?.saved_postcode_areas || []).join(', '));
 
   // Reset state when modal opens with latest user data
   React.useEffect(() => {
@@ -74,6 +78,8 @@ function EditProfileModal({
       setFlexiblePricing((user as any)?.flexible_pricing ?? false);
       setSelectedTrades(user?.trades || []);
       setWebsite((user as any)?.website || '');
+      setSavedTrades(user?.saved_trades || []);
+      setSavedPostcodes((user?.saved_postcode_areas || []).join(', '));
     }
   }, [visible]);
 
@@ -96,6 +102,13 @@ function EditProfileModal({
       updateData.preferred_shop = preferredShop || undefined;
       updateData.hourly_rate = parseFloat(hourlyRate) || undefined;
       updateData.flexible_pricing = flexiblePricing;
+      updateData.saved_trades = savedTrades;
+      // Parse postcode areas from comma-separated string
+      updateData.saved_postcode_areas = savedPostcodes
+        .split(',')
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean);
+      if (website) updateData.website = website;
     } else {
       // Customer profile save — mark customer profile as complete
       if (name && city) {
@@ -211,6 +224,29 @@ function EditProfileModal({
                 <Text style={editStyles.label}>WEBSITE / SOCIAL</Text>
                 <TextInput style={editStyles.input} value={website} onChangeText={setWebsite} placeholderTextColor={Colors.textMuted} placeholder="https://yourwebsite.com" autoCapitalize="none" />
               </View>
+
+              <View style={editStyles.section}>
+                <Text style={editStyles.label}>MARKETPLACE: SAVED TRADES</Text>
+                <Text style={{ ...Typography.labelSM, color: Colors.textMuted, marginBottom: 8 }}>Job feed will prioritise these trades</Text>
+                <View style={editStyles.tradesGrid}>
+                  {TRADE_CATEGORIES.map(t => (
+                    <Pressable
+                      key={`saved-${t}`}
+                      style={[editStyles.tradeChip, savedTrades.includes(t) && editStyles.tradeChipActive]}
+                      onPress={() => setSavedTrades(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
+                    >
+                      <Text style={[editStyles.tradeChipText, savedTrades.includes(t) && editStyles.tradeChipTextActive]}>{t}</Text>
+                      {savedTrades.includes(t) ? <MaterialIcons name="check" size={12} color={Colors.textInverse} /> : null}
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              <View style={editStyles.section}>
+                <Text style={editStyles.label}>MARKETPLACE: PREFERRED AREAS</Text>
+                <TextInput style={editStyles.input} value={savedPostcodes} onChangeText={setSavedPostcodes} placeholderTextColor={Colors.textMuted} placeholder="e.g. M1, M2, SK1" autoCapitalize="characters" />
+                <Text style={{ ...Typography.labelSM, color: Colors.textMuted }}>Comma-separated postcode areas</Text>
+              </View>
             </>
           ) : null}
         </ScrollView>
@@ -264,7 +300,7 @@ function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => 
   const router = useRouter();
   const [available, setAvailable] = useState(user?.available ?? true);
 
-  const handleLogout = () => {
+  const handleLogout = () => { // Added missing function declaration
     showAlert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -285,7 +321,7 @@ function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => 
   const rows = [
     { icon: 'notifications-none', label: 'Notifications', action: () => showAlert('Coming Soon', 'Notification settings coming soon.') },
     { icon: 'lock-outline', label: 'Password & Security', action: () => showAlert('Coming Soon', 'Security settings coming soon.') },
-    { icon: 'payment', label: 'Payment Methods', action: () => showAlert('Stripe', 'Payment method management coming with Stripe integration.') },
+    { icon: 'payment', label: 'Subscription & Billing', action: () => showAlert('Subscription', 'Manage your £25/month contractor subscription. Payments via Stripe coming soon.') },
     { icon: 'admin-panel-settings', label: 'Admin: Disputes', action: () => { onClose(); router.push('/admin-disputes'); } },
   ];
 
@@ -381,8 +417,22 @@ function ContractorProfileTab() {
   const { showAlert } = useAlert();
   const [showEdit, setShowEdit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
 
-  const reviews = MOCK_REVIEWS;
+  // Fetch real reviews from Supabase
+  React.useEffect(() => {
+    if (!user?.id) return;
+    const supabase = getSupabaseClient();
+    supabase
+      .from('reviews')
+      .select('*, author:author_id(username)')
+      .eq('subject_id', user.id)
+      .eq('mode', 'customer_to_contractor')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setReviews(data.map(r => ({ ...r, author_name: r.author?.username || 'Customer' })));
+      });
+  }, [user?.id]);
   const avgRating = reviews.length > 0
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
     : 0;
@@ -637,10 +687,25 @@ function CustomerProfileTab() {
   const { showAlert } = useAlert();
   const [showEdit, setShowEdit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [customerReviews, setCustomerReviews] = useState<any[]>([]);
+
+  // Fetch real reviews received as a customer
+  React.useEffect(() => {
+    if (!user?.id) return;
+    const supabase = getSupabaseClient();
+    supabase
+      .from('reviews')
+      .select('*, author:author_id(username)')
+      .eq('subject_id', user.id)
+      .eq('mode', 'contractor_to_customer')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setCustomerReviews(data.map(r => ({ ...r, author_name: r.author?.username || 'Contractor' })));
+      });
+  }, [user?.id]);
 
   const myPosts = jobPosts.filter(p => p.client_id === user?.id);
-  // Reviews received as a customer (from contractors rating them)
-  const customerReviews = MOCK_REVIEWS.filter((r: any) => r.mode === 'contractor_to_customer');
+
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
