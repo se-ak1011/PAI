@@ -60,7 +60,6 @@ interface ContractorData {
   available?: boolean;
   website?: string;
   availability_days?: string[];
-  created_at?: string;
 }
 
 export default function ContractorProfileScreen() {
@@ -79,7 +78,7 @@ export default function ContractorProfileScreen() {
       const [profileRes, reviewsRes] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, username, business_name, bio, trades, hourly_rate_from, city, postcode_area, avatar_url, available, website, availability_days, created_at')
+          .select('id, username, business_name, bio, trades, hourly_rate_from, city, postcode_area, avatar_url, available, website, availability_days')
           .eq('id', id)
           .single(),
         supabase
@@ -172,11 +171,6 @@ export default function ContractorProfileScreen() {
             {contractor.business_name ? (
               <Text style={styles.business}>{contractor.business_name}</Text>
             ) : null}
-            {contractor.created_at ? (
-              <Text style={styles.memberSince}>
-                Member since {new Date(contractor.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
-              </Text>
-            ) : null}
             {avgRating > 0 ? (
               <View style={styles.ratingRow}>
                 <View style={styles.stars}>{renderStars(avgRating)}</View>
@@ -205,7 +199,7 @@ export default function ContractorProfileScreen() {
             <Text style={[styles.statValue, { color: Colors.success }]}>
               {contractor.hourly_rate_from ? `£${contractor.hourly_rate_from}` : '—'}
             </Text>
-            <Text style={styles.statLabel}>DAY RATE</Text>
+            <Text style={styles.statLabel}>FROM/DAY</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.stat}>
@@ -259,16 +253,6 @@ export default function ContractorProfileScreen() {
                 ? 'No availability set'
                 : `Usually available ${availDays.length} day${availDays.length !== 1 ? 's' : ''} per week`}
             </Text>
-            <View style={styles.availLegend}>
-              <View style={styles.availLegendItem}>
-                <View style={[styles.availLegendDot, { backgroundColor: Colors.primaryGlow }]} />
-                <Text style={styles.availLegendText}>Available</Text>
-              </View>
-              <View style={styles.availLegendItem}>
-                <View style={[styles.availLegendDot, { backgroundColor: Colors.textMuted + '44' }]} />
-                <Text style={styles.availLegendText}>Not available</Text>
-              </View>
-            </View>
           </View>
         </View>
 
@@ -387,12 +371,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
     borderColor: Colors.border, padding: 16, gap: 12,
   },
-  memberSince: { ...Typography.labelSM, color: Colors.textMuted },
   calendarNote: { ...Typography.labelSM, color: Colors.textMuted, textAlign: 'center' },
-  availLegend: { flexDirection: 'row', gap: 16, paddingTop: 2 },
-  availLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  availLegendDot: { width: 7, height: 7, borderRadius: 4 },
-  availLegendText: { fontSize: 11, color: Colors.textMuted, fontWeight: '500' as const },
   portfolioGrid: { flexDirection: 'row', gap: 8 },
   portfolioImg: { flex: 1, height: 100, borderRadius: Radius.md, overflow: 'hidden' },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 14 },

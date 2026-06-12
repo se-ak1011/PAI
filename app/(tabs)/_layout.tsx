@@ -10,8 +10,6 @@ import type { ActiveRole } from '@/contexts/RoleContext';
 
 // ─────────────────────────────────────────────
 // Role Switcher Bar (dual accounts only)
-// Separates account MODE (Contractor / Customer)
-// from page navigation — Profile lives in the tab bar.
 // ─────────────────────────────────────────────
 export function RoleSwitcherBar({ currentTab }: { currentTab?: string }) {
   const { activeRole, setActiveRole, isDualAccount } = useRole();
@@ -20,23 +18,35 @@ export function RoleSwitcherBar({ currentTab }: { currentTab?: string }) {
 
   if (!isDualAccount) return null;
 
-  const modes: { id: ActiveRole; label: string; icon: any; sub: string }[] = [
-    { id: 'contractor', label: 'Contractor mode', icon: 'construction', sub: 'Work & income' },
-    { id: 'customer', label: 'Customer mode', icon: 'person', sub: 'Hire tradespeople' },
+  const isOnProfileTab = currentTab === 'profile';
+
+  const roles: { id: ActiveRole | 'profile_nav'; label: string; icon: any }[] = [
+    { id: 'contractor', label: 'Contractor', icon: 'construction' },
+    { id: 'profile_nav', label: 'Profile', icon: 'account-circle' },
+    { id: 'customer', label: 'Customer', icon: 'person' },
   ];
 
-  const handlePress = (id: ActiveRole) => {
-    setActiveRole(id);
-    // Navigate to dashboard so content reflects the new mode
-    if (currentTab !== 'profile') router.navigate('/(tabs)');
+  const handlePress = (id: ActiveRole | 'profile_nav') => {
+    if (id === 'profile_nav') {
+      router.navigate('/(tabs)/profile');
+    } else {
+      setActiveRole(id as ActiveRole);
+      // If we're on the profile tab and switching role, go back to dashboard
+      if (isOnProfileTab) router.navigate('/(tabs)');
+    }
+  };
+
+  const isProfileActive = (id: ActiveRole | 'profile_nav') => {
+    if (id === 'profile_nav') return isOnProfileTab;
+    if (isOnProfileTab) return false;
+    return activeRole === id;
   };
 
   return (
     <View style={[styles.roleSwitcher, { paddingBottom: insets.bottom > 0 ? insets.bottom : 12 }]}>
-      <Text style={styles.roleSwitcherLabel}>ACTIVE MODE</Text>
       <View style={styles.roleSwitcherInner}>
-        {modes.map(r => {
-          const isActive = activeRole === r.id;
+        {roles.map(r => {
+          const isActive = isProfileActive(r.id);
           return (
             <Pressable
               key={r.id}
@@ -48,17 +58,9 @@ export function RoleSwitcherBar({ currentTab }: { currentTab?: string }) {
                 size={16}
                 color={isActive ? Colors.textInverse : Colors.textMuted}
               />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.roleBtnText, isActive && styles.roleBtnTextActive]}>
-                  {r.label}
-                </Text>
-                <Text style={[styles.roleBtnSub, isActive && styles.roleBtnSubActive]}>
-                  {r.sub}
-                </Text>
-              </View>
-              {isActive ? (
-                <MaterialIcons name="check" size={14} color={Colors.textInverse} />
-              ) : null}
+              <Text style={[styles.roleBtnText, isActive && styles.roleBtnTextActive]}>
+                {r.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -75,9 +77,17 @@ export default function TabLayout() {
   const { user } = useAuth();
   const { activeRole, isDualAccount, isContractorAccount, isCustomerAccount } = useRole();
 
+  const accountType = user?.account_type ?? 'contractor';
+
+  // For dual accounts, the bottom tabs change with active role
+  // For single-role accounts, static tabs
   const showContractorTabs = isDualAccount
-    ? activeRole === 'contractor'
+    ? (activeRole === 'contractor' || activeRole === 'profile')
     : isContractorAccount;
+
+  const showCustomerTabs = isDualAccount
+    ? activeRole === 'customer'
+    : isCustomerAccount;
 
   const tabBarStyle = {
     height: Platform.select({ ios: insets.bottom + 60, android: insets.bottom + 60, default: 70 }),
@@ -132,21 +142,22 @@ export default function TabLayout() {
         }}
       />
 
-      {/* MARKETPLACE */}
+      {/* MARKETPLACE / SOCIAL */}
       <Tabs.Screen
         name="marketplace"
         options={{
-          title: 'Market',
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="storefront" size={size} color={color} />,
+          title: 'Social',
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="people" size={size} color={color} />,
         }}
       />
 
-      {/* PROFILE — always visible in tab bar for ALL account types */}
+      {/* PROFILE — always accessible, hidden from tab bar for dual accounts (accessed via role switcher) */}
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
+          href: !isDualAccount ? undefined : null,
         }}
       />
     </Tabs>
@@ -160,34 +171,26 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     paddingTop: Spacing.sm,
     paddingHorizontal: Spacing.md,
-    gap: 6,
-  },
-  roleSwitcherLabel: {
-    ...Typography.labelXS,
-    color: Colors.textMuted,
-    textAlign: 'center',
   },
   roleSwitcherInner: {
     flexDirection: 'row',
     backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.pill,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: 4,
-    gap: 4,
+    gap: 2,
   },
   roleBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: Radius.md,
+    justifyContent: 'center',
+    gap: 6,
+    height: 44,
+    borderRadius: Radius.pill,
   },
   roleBtnActive: { backgroundColor: Colors.primary },
   roleBtnText: { ...Typography.btnSM, color: Colors.textMuted },
   roleBtnTextActive: { color: Colors.textInverse },
-  roleBtnSub: { fontSize: 10, color: Colors.textMuted, fontWeight: '400' as const, marginTop: 1 },
-  roleBtnSubActive: { color: Colors.primaryLight },
 });

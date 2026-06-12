@@ -41,8 +41,7 @@ export default function TaxPotScreen() {
 
         {/* Main Tax Pot Card */}
         <View style={styles.potCard}>
-          <Text style={styles.potLabel}>ESTIMATED TAX RESERVED</Text>
-          <Text style={styles.potGuidanceText}>Based on your current earnings and selected tax status. Guidance only.</Text>
+          <Text style={styles.potLabel}>TOTAL SET-ASIDE</Text>
           <Text style={styles.potAmount}>£{summary.totalSetAside.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
 
           <View style={styles.potBreakdown}>
@@ -199,7 +198,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   potLabel: { ...Typography.labelXS, color: Colors.primaryLight },
-  potGuidanceText: { ...Typography.labelSM, color: Colors.primaryLight, opacity: 0.7, lineHeight: 17, marginTop: -8 },
   potAmount: { ...Typography.dataXL, fontSize: 40, color: Colors.taxPot },
   potBreakdown: { gap: 10 },
   potRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

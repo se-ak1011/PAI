@@ -67,7 +67,8 @@ function TradeNetworkTab({
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={styles.tradeNetworkBannerTitle}>Contractor Network</Text>
               <Text style={styles.tradeNetworkBannerText}>
-                Need another trade on a job? Find verified PAI contractors and subcontract work directly through the platform.
+                Need another trade on a job? Browse registered PAI contractors to bring in for sub-contracts.
+                E.g. a bricklayer hiring a plumber — connect, agree a price, and track it through PAI.
               </Text>
             </View>
           </View>
@@ -114,7 +115,7 @@ function TradeNetworkTab({
           </View>
           {item.hourly_rate_from ? (
             <View style={styles.contractorRight}>
-              <Text style={styles.rateLabel}>DAY RATE</Text>
+              <Text style={styles.rateLabel}>DAY</Text>
               <Text style={styles.rate}>£{item.hourly_rate_from}</Text>
             </View>
           ) : null}
@@ -234,7 +235,7 @@ export default function MarketplaceScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <Text style={styles.title}>Marketplace</Text>
+        <Text style={styles.title}>Social</Text>
         <Pressable style={styles.bellBtn}>
           <MaterialIcons name="notifications-none" size={22} color={Colors.textSecondary} />
         </Pressable>
