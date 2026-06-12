@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, Switch, TextInput, Modal, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, Pressable, Switch, TextInput, Modal, ActivityIndicator, Share, Platform,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,7 +12,7 @@ import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { useReliability } from '@/hooks/useReliability';
 import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
-import { TRADE_CATEGORIES, SUBSCRIPTION } from '@/constants/config';
+import { TRADE_CATEGORIES, SUBSCRIPTION, getContractorProfileUrl } from '@/constants/config';
 import { useRole } from '@/hooks/useRole';
 import { useJobs } from '@/hooks/useJobs';
 import { getSupabaseClient } from '@/template';
@@ -491,6 +492,21 @@ function ContractorProfileTab() {
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
     : 0;
 
+  const handleShareProfile = async () => {
+    if (!user?.id) return;
+    const url = getContractorProfileUrl(user.id);
+    try {
+      if (Platform.OS === 'web') {
+        await Clipboard.setStringAsync(url);
+        showAlert('Link Copied', 'Your public profile link has been copied to the clipboard.');
+      } else {
+        await Share.share({ message: `Check out my contractor profile on PAI: ${url}`, url });
+      }
+    } catch {
+      // Share sheet dismissed
+    }
+  };
+
   // ── Availability calendar ──────────────────────────────
   const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const [availDays, setAvailDays] = React.useState<string[]>(user?.availability_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
@@ -649,6 +665,12 @@ function ContractorProfileTab() {
             <MaterialIcons name="add" size={14} color={Colors.primaryGlow} />
           </Pressable>
         )}
+
+        {/* Share public profile */}
+        <Pressable style={styles.shareBtn} onPress={handleShareProfile}>
+          <MaterialIcons name="share" size={18} color={Colors.primaryGlow} />
+          <Text style={styles.shareBtnText}>Share Profile</Text>
+        </Pressable>
 
         {/* Trades */}
         <View style={styles.section}>
@@ -1038,6 +1060,12 @@ const styles = StyleSheet.create({
   // Info row
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   infoText: { ...Typography.bodyMD, color: Colors.textSecondary },
+  shareBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border, paddingVertical: 12,
+  },
+  shareBtnText: { ...Typography.btnSM, color: Colors.primaryGlow },
 
   // Section
   section: { gap: 12 },

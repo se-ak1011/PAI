@@ -1,6 +1,15 @@
 export const APP_NAME = 'PAI';
 export const APP_TAGLINE = 'Your trades business, sorted.';
 
+// ─── Public web URLs ────────────────────────────────────────
+// Base domain for shareable public pages (contractor landing pages).
+// The /contractor/{id} route is served by the web build via expo-router.
+export const PUBLIC_WEB_BASE_URL = 'https://pai.app';
+
+export function getContractorProfileUrl(contractorId: string): string {
+  return `${PUBLIC_WEB_BASE_URL}/contractor/${contractorId}`;
+}
+
 // ─── Stripe fee configuration ───────────────────────────────
 // Configurable so fee changes never require a rebuild.
 // Stripe UK standard: 1.5% + 20p domestic cards (adjust as needed)

@@ -22,6 +22,7 @@ export default function RootLayout() {
                   <Stack.Screen name="job-detail" options={{ headerShown: false }} />
                   <Stack.Screen name="marketplace-job" options={{ headerShown: false }} />
                   <Stack.Screen name="contractor-profile" options={{ headerShown: false }} />
+                  <Stack.Screen name="contractor/[id]" options={{ headerShown: false }} />
                   <Stack.Screen name="admin-disputes" options={{ headerShown: false }} />
                   <Stack.Screen name="invoice" options={{ headerShown: false }} />
                 </Stack>
