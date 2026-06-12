@@ -543,6 +543,17 @@ function ContractorProfileTab() {
               ? 'Mark yourself as unavailable'
               : `Available ${availDays.length} day${availDays.length !== 1 ? 's' : ''} per week — visible on your public profile`}
           </Text>
+          <View style={calStyles.legend}>
+            <View style={calStyles.legendItem}>
+              <View style={[calStyles.legendDot, { backgroundColor: Colors.primaryGlow }]} />
+              <Text style={calStyles.legendText}>Available</Text>
+            </View>
+            <View style={calStyles.legendItem}>
+              <View style={[calStyles.legendDot, { backgroundColor: Colors.textMuted + '44' }]} />
+              <Text style={calStyles.legendText}>Unavailable</Text>
+            </View>
+            <Text style={calStyles.legendNote}>Tap a day to toggle</Text>
+          </View>
         </View>
       </View>
     );
@@ -594,6 +605,11 @@ function ContractorProfileTab() {
           <View style={styles.heroInfo}>
             <Text style={styles.heroName}>{user?.display_name || 'Your Name'}</Text>
             {user?.business_name ? <Text style={styles.heroBusiness}>{user.business_name}</Text> : null}
+            {user?.created_at ? (
+              <Text style={styles.memberSince}>
+                Member since {new Date(user.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+              </Text>
+            ) : null}
             {avgRating > 0 ? (
               <View style={styles.ratingRow}>
                 <StarRow rating={avgRating} />
@@ -630,7 +646,7 @@ function ContractorProfileTab() {
             <Text style={[styles.statVal, { color: Colors.success }]}>
               {user?.hourly_rate_from ? `£${user.hourly_rate_from}` : '—'}
             </Text>
-            <Text style={styles.statLbl}>FROM/DAY</Text>
+            <Text style={styles.statLbl}>DAY RATE</Text>
           </View>
         </View>
 
@@ -981,6 +997,11 @@ const calStyles = StyleSheet.create({
   dotOn: { backgroundColor: Colors.primaryGlow },
   dotOff: { backgroundColor: Colors.textMuted + '44' },
   note: { ...Typography.labelSM, color: Colors.textMuted, textAlign: 'center' },
+  legend: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 4 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 7, height: 7, borderRadius: 4 },
+  legendText: { ...Typography.labelSM, color: Colors.textMuted, fontSize: 10 },
+  legendNote: { ...Typography.labelSM, color: Colors.textMuted, fontSize: 10, marginLeft: 'auto' as any },
 });
 
 const styles = StyleSheet.create({
@@ -1015,7 +1036,7 @@ const styles = StyleSheet.create({
   heroBusiness: { ...Typography.labelMD, color: Colors.textSecondary },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ratingText: { ...Typography.labelSM },
-  noReviews: { ...Typography.labelSM, color: Colors.textMuted },
+  memberSince: { ...Typography.labelSM, color: Colors.textMuted },
   availBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.pill, borderWidth: 1,
