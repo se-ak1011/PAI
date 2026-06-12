@@ -53,6 +53,7 @@ interface TaxPotContextType {
   setTaxRate: (rate: number) => void;
   addManualIncome: (entry: Omit<ManualIncomeEntry, 'id' | 'created_at' | 'tax_set_aside'>) => Promise<void>;
   deleteManualIncome: (id: string) => Promise<void>;
+  addPAIJobIncome: (opts: { job_id: string; job_title: string; customer_name: string; amount: number; date_completed: string }) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -98,7 +99,7 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
   const user = auth?.user ?? null;
 
   const [manualIncome, setManualIncome] = useState<ManualIncomeEntry[]>([]);
-  const [paiIncome] = useState<PAIIncomeEntry[]>([]);
+  const [paiIncome, setPaiIncome] = useState<PAIIncomeEntry[]>([]);
   const [taxRate, setTaxRateState] = useState(30);
   const [loading, setLoading] = useState(false);
 
@@ -114,6 +115,34 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
       .order('date', { ascending: false });
     if (!error && data) {
       setManualIncome(data.map(i => ({ ...i, source: 'manual' as const })));
+    }
+    // Load PAI income from paid private jobs
+    const { data: paiData } = await supabase
+      .from('private_jobs')
+      .select('id, title, customer, total, paid_at, tax_rate')
+      .eq('contractor_id', user.id)
+      .eq('status', 'paid')
+      .not('paid_at', 'is', null);
+    if (paiData) {
+      const paiEntries: PAIIncomeEntry[] = paiData.map((j: any) => {
+        const tr = j.tax_rate ?? taxRate;
+        const tax_set_aside = Math.round(j.total * (tr / 100) * 100) / 100;
+        return {
+          id: `pai-${j.id}`,
+          job_id: j.id,
+          contractor_id: user.id,
+          customer_id: '',
+          customer_name: j.customer || '',
+          amount: j.total,
+          date_completed: j.paid_at,
+          tax_rate: tr,
+          tax_set_aside,
+          net_payout: j.total - tax_set_aside,
+          created_at: j.paid_at,
+          source: 'pai' as const,
+        };
+      });
+      setPaiIncome(paiEntries);
     }
     // Sync tax_rate from profile
     if (user.tax_rate) setTaxRateState(user.tax_rate);
@@ -166,6 +195,29 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Called when a private job is marked as paid — adds it to PAI income without double-counting
+  const addPAIJobIncome = async (opts: { job_id: string; job_title: string; customer_name: string; amount: number; date_completed: string }) => {
+    const existingId = `pai-${opts.job_id}`;
+    if (paiIncome.find(p => p.id === existingId)) return; // Already tracked
+    const tr = taxRate;
+    const tax_set_aside = Math.round(opts.amount * (tr / 100) * 100) / 100;
+    const entry: PAIIncomeEntry = {
+      id: existingId,
+      job_id: opts.job_id,
+      contractor_id: user?.id || '',
+      customer_id: '',
+      customer_name: opts.customer_name,
+      amount: opts.amount,
+      date_completed: opts.date_completed,
+      tax_rate: tr,
+      tax_set_aside,
+      net_payout: opts.amount - tax_set_aside,
+      created_at: opts.date_completed,
+      source: 'pai' as const,
+    };
+    setPaiIncome(prev => [entry, ...prev]);
+  };
+
   const allIncome: IncomeEntry[] = [
     ...paiIncome,
     ...manualIncome,
@@ -188,6 +240,7 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
       setTaxRate,
       addManualIncome,
       deleteManualIncome,
+      addPAIJobIncome,
       refresh,
     }}>
       {children}

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useJobs } from '@/hooks/useJobs';
+import { useTaxPot } from '@/hooks/useTaxPot';
 import { useAlert } from '@/template';
 import { JOB_STATUS_ACTIONS } from '@/constants/config';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -37,6 +38,7 @@ export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { privateJobs, updatePrivateJob, deletePrivateJob } = useJobs();
+  const { addPAIJobIncome } = useTaxPot();
   const { showAlert } = useAlert();
 
   const job = privateJobs.find(j => j.id === id);
@@ -61,10 +63,36 @@ export default function JobDetailScreen() {
 
   const handleStatusUpdate = async () => {
     if (!nextAction) return;
+
+    // "Send Invoice" — update status then open invoice screen
+    if (nextAction.next === 'invoiced') {
+      setUpdating(true);
+      await updatePrivateJob(job.id, {
+        status: 'invoiced',
+        invoiced_at: new Date().toISOString().split('T')[0],
+      });
+      setUpdating(false);
+      router.push({ pathname: '/invoice', params: { id: job.id } });
+      return;
+    }
+
     setUpdating(true);
     const updates: Record<string, unknown> = { status: nextAction.next };
-    if (nextAction.next === 'invoiced') updates.invoiced_at = new Date().toISOString().split('T')[0];
-    if (nextAction.next === 'paid') updates.paid_at = new Date().toISOString().split('T')[0];
+    if (nextAction.next === 'paid') {
+      updates.paid_at = new Date().toISOString().split('T')[0];
+      await updatePrivateJob(job.id, updates);
+      // Auto-add to Tax Pot
+      await addPAIJobIncome({
+        job_id: job.id,
+        job_title: job.title,
+        customer_name: job.customer || '',
+        amount: job.total,
+        date_completed: updates.paid_at as string,
+      });
+      setUpdating(false);
+      showAlert('Payment Recorded', 'Income added to your Tax Pot.');
+      return;
+    }
     await updatePrivateJob(job.id, updates);
     setUpdating(false);
   };
@@ -210,6 +238,16 @@ export default function JobDetailScreen() {
       {/* Action Footer */}
       {nextAction ? (
         <View style={styles.footer}>
+          {/* Show View Invoice button alongside for invoiced state */}
+          {job.status === 'invoiced' ? (
+            <Pressable
+              style={styles.viewInvoiceBtn}
+              onPress={() => router.push({ pathname: '/invoice', params: { id: job.id } })}
+            >
+              <MaterialIcons name="receipt" size={18} color={Colors.primaryGlow} />
+              <Text style={styles.viewInvoiceBtnText}>View Invoice</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             style={[styles.actionBtn, updating && styles.actionBtnDisabled]}
             onPress={handleStatusUpdate}
@@ -219,7 +257,11 @@ export default function JobDetailScreen() {
               <ActivityIndicator size="small" color={Colors.textInverse} />
             ) : (
               <>
-                <MaterialIcons name="arrow-forward" size={18} color={Colors.textInverse} />
+                <MaterialIcons
+                  name={nextAction.next === 'invoiced' ? 'receipt' : 'arrow-forward'}
+                  size={18}
+                  color={Colors.textInverse}
+                />
                 <Text style={styles.actionBtnText}>{nextAction.label}</Text>
               </>
             )}
@@ -227,9 +269,16 @@ export default function JobDetailScreen() {
         </View>
       ) : job.status === 'paid' ? (
         <View style={styles.footer}>
-          <View style={styles.paidBanner}>
+          <Pressable
+            style={styles.viewInvoiceBtn}
+            onPress={() => router.push({ pathname: '/invoice', params: { id: job.id } })}
+          >
+            <MaterialIcons name="receipt" size={18} color={Colors.primaryGlow} />
+            <Text style={styles.viewInvoiceBtnText}>View Invoice</Text>
+          </Pressable>
+          <View style={[styles.paidBanner, { flex: 1 }]}>
             <MaterialIcons name="check-circle" size={20} color={Colors.success} />
-            <Text style={styles.paidText}>Payment received · Job complete</Text>
+            <Text style={styles.paidText}>Payment received</Text>
           </View>
         </View>
       ) : null}
@@ -296,13 +345,20 @@ const styles = StyleSheet.create({
   materialName: { ...Typography.bodyMD, flex: 1 },
   materialQty: { ...Typography.labelMD, color: Colors.textMuted },
   materialPrice: { ...Typography.dataMD },
-  footer: { padding: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.bg },
+  footer: { flexDirection: 'row', gap: 10, padding: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.bg },
   actionBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     height: 54, backgroundColor: Colors.primary, borderRadius: Radius.lg,
   },
   actionBtnDisabled: { opacity: 0.5 },
   actionBtnText: { ...Typography.btnMD, color: Colors.textInverse },
+  viewInvoiceBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    height: 54, paddingHorizontal: 16,
+    backgroundColor: Colors.card, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  viewInvoiceBtnText: { ...Typography.btnSM, color: Colors.primaryGlow },
   paidBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: Colors.successDim, borderRadius: Radius.md, padding: 14,
