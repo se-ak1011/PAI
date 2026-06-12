@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Share, Platform } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +10,7 @@ import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useAlert } from '@/template';
 import { useAuth } from '@/hooks/useAuth';
 import { getSupabaseClient } from '@/template';
+import { getContractorProfileUrl } from '@/constants/config';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -114,18 +116,39 @@ export default function ContractorProfileScreen() {
     );
   }
 
+  // When opened directly from a shared public link there is no
+  // navigation history to go back to — fall back to the app root.
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
+
   if (!contractor) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.center}>
           <Text style={styles.notFound}>Contractor not found</Text>
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={goBack}>
             <Text style={styles.backLink}>Go back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
+
+  const handleShare = async () => {
+    const url = getContractorProfileUrl(contractor.id);
+    try {
+      if (Platform.OS === 'web') {
+        await Clipboard.setStringAsync(url);
+        showAlert('Link Copied', 'Public profile link copied to clipboard.');
+      } else {
+        await Share.share({ message: url, url });
+      }
+    } catch {
+      // Share sheet dismissed
+    }
+  };
 
   const avgRating = reviews.length > 0
     ? reviews.reduce((s: number, r: any) => s + r.rating, 0) / reviews.length
@@ -147,11 +170,11 @@ export default function ContractorProfileScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar style="light" />
       <View style={styles.navBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+        <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
           <MaterialIcons name="arrow-back" size={22} color={Colors.textSecondary} />
         </Pressable>
         <Text style={styles.navTitle}>Profile</Text>
-        <Pressable hitSlop={8} onPress={() => showAlert('Share', 'Share link coming soon.')}>
+        <Pressable hitSlop={8} onPress={handleShare}>
           <MaterialIcons name="share" size={22} color={Colors.textSecondary} />
         </Pressable>
       </View>
