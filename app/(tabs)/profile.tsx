@@ -295,12 +295,12 @@ const editStyles = StyleSheet.create({
 // Settings Modal (shared)
 // ─────────────────────────────────────────────
 function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, deleteAccount, operationLoading, updateProfile } = useAuth();
   const { showAlert } = useAlert();
   const router = useRouter();
   const [available, setAvailable] = useState(user?.available ?? true);
 
-  const handleLogout = () => { // Added missing function declaration
+  const handleLogout = () => {
     showAlert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -311,6 +311,43 @@ function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => 
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    showAlert(
+      'Delete Account',
+      'This will permanently delete your account, all jobs, invoices, income records, and profile data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Type DELETE to confirm',
+          style: 'default',
+          onPress: () => {
+            // Second confirmation with explicit text check
+            showAlert(
+              'Final Confirmation',
+              'Are you absolutely sure? All your data will be erased immediately and cannot be recovered.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete My Account',
+                  style: 'destructive',
+                  onPress: async () => {
+                    onClose();
+                    const { error } = await deleteAccount();
+                    if (error) {
+                      showAlert('Error', `Could not delete account: ${error}`);
+                    } else {
+                      router.replace('/auth');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
   };
 
   const handleAvailToggle = async (val: boolean) => {
@@ -374,6 +411,15 @@ function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => 
             <MaterialIcons name="logout" size={18} color={Colors.error} />
             <Text style={settStyles.signOutText}>Sign Out</Text>
           </Pressable>
+
+          <Pressable
+            style={[settStyles.deleteAccountBtn, operationLoading && { opacity: 0.5 }]}
+            onPress={handleDeleteAccount}
+            disabled={operationLoading}
+          >
+            <MaterialIcons name="delete-forever" size={18} color={Colors.textMuted} />
+            <Text style={settStyles.deleteAccountText}>Delete Account</Text>
+          </Pressable>
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -407,6 +453,12 @@ const settStyles = StyleSheet.create({
     backgroundColor: Colors.errorDim,
   },
   signOutText: { ...Typography.btnMD, color: Colors.error },
+  deleteAccountBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    padding: 16, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: 'transparent',
+  },
+  deleteAccountText: { ...Typography.btnMD, color: Colors.textMuted },
 });
 
 // ─────────────────────────────────────────────

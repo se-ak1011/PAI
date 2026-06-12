@@ -50,6 +50,7 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string, accountType: UserRole) => Promise<{ error: string | null }>;
   signInWithGoogle: (role?: UserRole) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: string | null }>;
   completeOnboarding: (data: Partial<UserProfile>) => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -196,6 +197,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   };
 
+  const deleteAccount = async (): Promise<{ error: string | null }> => {
+    if (!user) return { error: 'Not authenticated' };
+    setOperationLoading(true);
+    try {
+      // Call the edge function or use service-role delete — fall back to a DB RPC
+      // We use the anon client to call a self-delete RPC that runs with SECURITY DEFINER
+      const { error: rpcError } = await supabase.rpc('delete_own_account');
+      if (rpcError) {
+        setOperationLoading(false);
+        return { error: rpcError.message };
+      }
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setOperationLoading(false);
+      return { error: null };
+    } catch (err: any) {
+      setOperationLoading(false);
+      return { error: err?.message || 'Failed to delete account' };
+    }
+  };
+
   const completeOnboarding = async (data: Partial<UserProfile>) => {
     if (!user) return;
     setOperationLoading(true);
@@ -283,6 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signup,
       signInWithGoogle,
       logout,
+      deleteAccount,
       completeOnboarding,
       updateProfile,
       refreshProfile,
