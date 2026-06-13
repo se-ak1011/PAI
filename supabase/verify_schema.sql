@@ -58,7 +58,7 @@ pol as (
 )
 select * from (
   select 1 as ord,
-         '1. Tables (expect 7)'                  as check,
+         '1. Tables (expect 7)'                  as check_name,
          (select n from t_count)::text || ' / 7' as found,
          case when (select n from t_count) = 7 then 'PASS' else 'FAIL' end as status
   union all
