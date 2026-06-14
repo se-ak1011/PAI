@@ -191,7 +191,40 @@ live app. See `MIGRATION_CHECKLIST.md` Step 7.
 
 ## Rollback
 
-Because the app stays on OnSpace until cutover, rollback before cutover is a
-no-op (just don't switch the env vars). After cutover, restore the previous
-`EXPO_PUBLIC_*` values and rebuild — OnSpace remains intact since no data was
-migrated out of it.
+The cutover is just two values in `.env` (`EXPO_PUBLIC_SUPABASE_URL` and
+`EXPO_PUBLIC_SUPABASE_ANON_KEY`). Rolling back = restore the old OnSpace values
+and rebuild. Nothing is destructive:
+
+- This is a **fresh start** — no OnSpace data was migrated or deleted, and the
+  new Supabase project never touches OnSpace. OnSpace stays fully intact.
+- Migrations are idempotent; re-running them changes nothing.
+
+### How reversible, by phase
+
+| Phase | Reversible? | Notes |
+|-------|-------------|-------|
+| **Test phase (pre-cutover)** | Trivially | The app is still on OnSpace. Rollback is a no-op — just don't switch the env vars. Delete `.env.local` to drop the local pointer. |
+| **Just after cutover, low traffic** | Easily | Flip the env back; little/no new data created on Supabase to lose. |
+| **After sustained live traffic** | Switch still instant, but data diverges | Any signups/jobs/reviews created on Supabase during the live window live **only** on Supabase. Restoring OnSpace does not bring that data back — you'd export/reconcile it manually. |
+
+### Rollback steps (after cutover)
+
+1. In `.env`, restore the previous OnSpace values:
+   - `EXPO_PUBLIC_SUPABASE_URL=<onspace url>`
+   - `EXPO_PUBLIC_SUPABASE_ANON_KEY=<onspace key>`
+2. Rebuild / restart Expo so the env is picked up:
+   ```bash
+   npx expo start -c
+   ```
+3. Verify the app is talking to OnSpace again (sign in, load jobs).
+
+> Keep the old OnSpace `.env` values recorded before cutover so this is a paste,
+> not a scramble.
+
+### Safe-cutover practice
+
+- Keep OnSpace running (read-only is fine) as a fallback for a short window after
+  cutover.
+- Watch Supabase logs (Auth, Postgres, Edge Functions) for the first hours.
+- Only decommission OnSpace once you're confident and have reconciled any data
+  created during the live window.
