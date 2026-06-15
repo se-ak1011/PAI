@@ -13,6 +13,7 @@ import { useRole } from '@/hooks/useRole';
 import { MaterialIcons } from '@expo/vector-icons';
 import { RoleSwitcherBar } from './_layout';
 import { PostJobModal } from '@/components/feature/PostJobModal';
+import { CUSTOMER_STATUS_LABELS } from '@/constants/config';
 
 const CONTRACTOR_FILTERS = ['All', 'Draft', 'Sent', 'Active', 'Invoiced', 'Paid'];
 const CUSTOMER_FILTERS = ['All', 'Open', 'In Progress', 'Completed'];
@@ -167,7 +168,7 @@ export default function JobsScreen() {
   const statusMap: Record<string, string[]> = {
     All: [],
     Open: ['open'],
-    'In Progress': ['in_progress'],
+    'In Progress': ['accepted', 'in_progress', 'invoiced'],
     Completed: ['completed'],
   };
   const statusList = statusMap[filter] ?? [];
@@ -228,7 +229,7 @@ export default function JobsScreen() {
               <Text style={styles.postCardTitle} numberOfLines={1}>{item.title}</Text>
               <Text style={styles.postCardSub}>{item.trade} · {item.city} · {item.applications} quotes</Text>
               <View style={[styles.postStatusBadge, item.status === 'open' && styles.postStatusOpen]}>
-                <Text style={styles.postStatusText}>{item.status.replace('_', ' ').toUpperCase()}</Text>
+                <Text style={styles.postStatusText}>{(CUSTOMER_STATUS_LABELS[item.status] ?? item.status.replace('_', ' ')).toUpperCase()}</Text>
               </View>
             </View>
             <Text style={styles.postBudget}>£{item.budget.toLocaleString()}</Text>
