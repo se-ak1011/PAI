@@ -32,7 +32,7 @@ export function PBadge({ label, variant = 'default' }: PBadgeProps) {
 
 const styles = StyleSheet.create({
   badge: {
-    borderRadius: Radius.pill,
+    borderRadius: Radius.sm,
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 3,

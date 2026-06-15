@@ -1,69 +1,71 @@
-// PAI Design System — Industrial Palette
+// PAI Design System — Dark Slate + Brass Industrial Palette
+// Contractor operating system: gunmetal surfaces, aged-brass accents,
+// hard edges, dense practical typography. No purple, no luxury gold.
 export const Colors = {
-  // Surfaces
-  bg: '#0E0E14',
-  surface: '#121217',
-  surfaceAlt: '#181320',
-  card: '#1A1A24',
-  cardAlt: '#1E1E2A',
-  border: '#2A2A38',
-  borderSubtle: '#1E1E28',
+  // Surfaces — dark slate / gunmetal
+  bg: '#12171C',
+  surface: '#161B21',
+  surfaceAlt: '#1A2026',
+  card: '#1A2026',
+  cardAlt: '#222A33',
+  border: '#313B47',
+  borderSubtle: '#262E37',
 
-  // Brand — matched to official logo palette
-  primary: '#4A2A68',
-  primaryLight: '#7C5E9B',
-  primaryDim: '#2E1A42',
-  primaryGlow: '#9B78C8',
+  // Brand — aged brass (industrial, not jewellery)
+  primary: '#B08D57',
+  primaryLight: '#D4AF6A',
+  primaryDim: '#2A2316',
+  primaryGlow: '#D4AF6A',
 
-  // Logo cream — use for brand wordmark text if rendered in code
-  logoText: '#EDE8E0',
+  // Brass-tinted off-white for brand wordmark text if rendered in code
+  logoText: '#E8E2D6',
 
   // Text
-  textPrimary: '#F0F0F8',
-  textSecondary: '#9090A8',
-  textMuted: '#5A5A72',
-  textInverse: '#FFFFFF',
+  textPrimary: '#F5F7FA',
+  textSecondary: '#A3ADB8',
+  textMuted: '#6B7682',
+  textInverse: '#12171C',
 
   // Semantic
-  success: '#9B78C8',
-  successDim: '#2E1A42',
-  warning: '#7C5E9B',
-  warningDim: '#2A1A3A',
-  error: '#C25A6E',
-  errorDim: '#3A1A22',
-  info: '#8B7AB8',
-  infoDim: '#1E1632',
+  success: '#4F8A63',
+  successDim: '#16271C',
+  warning: '#D4AF6A',
+  warningDim: '#2A2316',
+  error: '#B85757',
+  errorDim: '#2A1719',
+  info: '#6E8597',
+  infoDim: '#1B2530',
 
   // Tabs & Nav
-  tabActive: '#4A2A68',
-  tabInactive: '#4A4A62',
-  tabBg: '#0E0E14',
+  tabActive: '#B08D57',
+  tabInactive: '#5C6670',
+  tabBg: '#12171C',
 
   // Financial
-  income: '#9B78C8',
-  expense: '#C25A6E',
-  taxPot: '#7C5E9B',
+  income: '#4F8A63',
+  expense: '#B85757',
+  taxPot: '#B08D57',
 };
 
 export const Typography = {
-  // Brand / Editorial — use for page titles, greetings, headers
-  brandXL: { fontSize: 38, fontStyle: 'italic' as const, fontWeight: '700' as const, color: Colors.textPrimary, letterSpacing: -0.5 },
-  brandLG: { fontSize: 30, fontStyle: 'italic' as const, fontWeight: '700' as const, color: Colors.textPrimary, letterSpacing: -0.5 },
-  brandMD: { fontSize: 24, fontStyle: 'italic' as const, fontWeight: '700' as const, color: Colors.textPrimary, letterSpacing: -0.3 },
-  brandSM: { fontSize: 20, fontStyle: 'italic' as const, fontWeight: '600' as const, color: Colors.textPrimary },
+  // Brand / Headings — strong, tight, practical (no italics)
+  brandXL: { fontSize: 32, fontWeight: '800' as const, color: Colors.textPrimary, letterSpacing: -0.5 },
+  brandLG: { fontSize: 26, fontWeight: '800' as const, color: Colors.textPrimary, letterSpacing: -0.4 },
+  brandMD: { fontSize: 21, fontWeight: '700' as const, color: Colors.textPrimary, letterSpacing: -0.3 },
+  brandSM: { fontSize: 17, fontWeight: '700' as const, color: Colors.textPrimary, letterSpacing: -0.2 },
 
-  // Geist Utility — all utility text
-  labelXS: { fontSize: 10, fontWeight: '500' as const, color: Colors.textMuted, letterSpacing: 1.2, textTransform: 'uppercase' as const },
-  labelSM: { fontSize: 12, fontWeight: '500' as const, color: Colors.textSecondary, letterSpacing: 0.8 },
+  // Utility — all utility text
+  labelXS: { fontSize: 10, fontWeight: '600' as const, color: Colors.textMuted, letterSpacing: 1.2, textTransform: 'uppercase' as const },
+  labelSM: { fontSize: 12, fontWeight: '500' as const, color: Colors.textSecondary, letterSpacing: 0.6 },
   labelMD: { fontSize: 14, fontWeight: '500' as const, color: Colors.textSecondary },
   bodyMD: { fontSize: 15, fontWeight: '400' as const, color: Colors.textPrimary, lineHeight: 22 },
   bodySM: { fontSize: 13, fontWeight: '400' as const, color: Colors.textSecondary, lineHeight: 19 },
   dataMD: { fontSize: 15, fontWeight: '600' as const, color: Colors.textPrimary },
-  dataLG: { fontSize: 22, fontWeight: '700' as const, color: Colors.textPrimary },
-  dataXL: { fontSize: 32, fontWeight: '700' as const, color: Colors.textPrimary },
-  btnMD: { fontSize: 15, fontWeight: '600' as const },
-  btnSM: { fontSize: 13, fontWeight: '600' as const },
-  headingMD: { fontSize: 18, fontWeight: '600' as const, color: Colors.textPrimary },
+  dataLG: { fontSize: 22, fontWeight: '700' as const, color: Colors.textPrimary, letterSpacing: -0.3 },
+  dataXL: { fontSize: 32, fontWeight: '800' as const, color: Colors.textPrimary, letterSpacing: -0.5 },
+  btnMD: { fontSize: 15, fontWeight: '700' as const },
+  btnSM: { fontSize: 13, fontWeight: '700' as const },
+  headingMD: { fontSize: 18, fontWeight: '700' as const, color: Colors.textPrimary, letterSpacing: -0.2 },
 };
 
 export const Spacing = {
@@ -76,26 +78,26 @@ export const Spacing = {
 };
 
 export const Radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
+  sm: 4,
+  md: 8,
+  lg: 10,
+  xl: 14,
   pill: 100,
 };
 
 export const Shadow = {
   card: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   modal: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 20,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 16,
   },
 };

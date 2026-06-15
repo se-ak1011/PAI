@@ -11,11 +11,11 @@
 import { useState, useEffect } from 'react';
 import { getSupabaseClient } from '@/template';
 
-// Muted PAI-palette reliability colours (no traffic-light primaries)
+// Reliability colours aligned to the industrial palette (no traffic-light primaries)
 export const RELIABILITY_COLOURS = {
-  Reliable:       '#6F8F75',   // muted sage
-  'Mixed History': '#9A7A4A',  // muted amber/brown
-  Caution:        '#8A4F5C',   // muted wine/rust
+  Reliable:       '#4F8A63',   // success green
+  'Mixed History': '#B08D57',  // aged brass
+  Caution:        '#B85757',   // error red
 } as const;
 
 export type ReliabilityLevel = keyof typeof RELIABILITY_COLOURS;
