@@ -134,6 +134,18 @@ export const JOB_POST_STATUSES = {
   CANCELLED: 'cancelled',
 };
 
+// Customer-facing labels for a posted job's status. The stored job_posts.status
+// is kept in sync with the contractor's private job by the
+// sync_job_post_status() DB trigger (see migrations/20260615000001).
+export const CUSTOMER_STATUS_LABELS: Record<string, string> = {
+  open: 'Open',
+  accepted: 'Booked',
+  in_progress: 'In progress',
+  invoiced: 'Invoiced',
+  completed: 'Complete',
+  cancelled: 'Cancelled',
+};
+
 // ─── Dev mode ───────────────────────────────────────────────
 // Set to true only during local development to show mock data
 export const DEV_MODE = false;
