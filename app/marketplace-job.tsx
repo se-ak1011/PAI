@@ -11,7 +11,7 @@ import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template';
 import { getSupabaseClient } from '@/template';
-import { calculateCheckoutTotal, PLATFORM_PRINCIPLES, CUSTOMER_STATUS_LABELS } from '@/constants/config';
+import { calculateCheckoutTotal, PLATFORM_PRINCIPLES } from '@/constants/config';
 import { useReliability } from '@/hooks/useReliability';
 import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -126,7 +126,7 @@ export default function MarketplaceJobScreen() {
             const supabase = getSupabaseClient();
             await supabase.from('job_applications').update({ status: 'accepted' }).eq('id', applicationId);
             await supabase.from('job_applications').update({ status: 'rejected' }).eq('job_post_id', post.id).neq('id', applicationId);
-            await supabase.from('job_posts').update({ status: 'accepted' }).eq('id', post.id);
+            await supabase.from('job_posts').update({ status: 'in_progress' }).eq('id', post.id);
             await supabase.from('private_jobs').insert({
               contractor_id: contractorId,
               title: post.title,
@@ -173,7 +173,7 @@ export default function MarketplaceJobScreen() {
 
         <View style={styles.body}>
           <View style={styles.topRow}>
-            <PBadge label={CUSTOMER_STATUS_LABELS[post.status] ?? post.status} variant={post.status as any} />
+            <PBadge label={post.status} variant={post.status as any} />
             <PBadge label={post.trade} />
           </View>
 
