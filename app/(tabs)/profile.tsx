@@ -586,7 +586,7 @@ const settStyles = StyleSheet.create({
 // Contractor Profile Tab
 // ─────────────────────────────────────────────
 function ContractorProfileTab() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { showAlert } = useAlert();
   const [showEdit, setShowEdit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);

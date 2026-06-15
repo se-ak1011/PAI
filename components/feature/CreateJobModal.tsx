@@ -137,7 +137,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
       labour: safeLabour,
       materials: safeMaterials,
       vat: safeVat,
-      materials_items: safeMaterialItems,
+      materials_items: safeMaterialItems.map(m => ({ name: m.name, qty: m.qty, price: m.estimatedPrice, unit: m.unit })),
       receipts: [],
       invoiced_at: null,
       paid_at: null,
