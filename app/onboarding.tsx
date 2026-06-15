@@ -68,7 +68,7 @@ export default function OnboardingScreen() {
       return (
         <View style={styles.stepContent}>
           <Image
-            source={{ uri: 'https://cdn-ai.onspace.ai/onspace/files/ZibWAkHU6zWf7ApvJcL3qb/1EFBAB4B-5F3B-4856-989A-9BF46663706D.png' }}
+            source={require('@/assets/images/logo-mark.png')}
             style={styles.heroLogo}
             contentFit="contain"
             transition={300}
