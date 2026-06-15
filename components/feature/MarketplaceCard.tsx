@@ -16,7 +16,7 @@ export function MarketplaceCard({ post, onPress }: MarketplaceCardProps) {
   return (
     <PCard onPress={onPress} noPadding style={styles.card}>
       <Image
-        source={{ uri: post.photo_url }}
+        source={{ uri: post.photo_url ?? undefined }}
         style={styles.image}
         contentFit="cover"
         transition={200}

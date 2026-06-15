@@ -14,7 +14,7 @@ export interface PrivateJob {
   labour: number;
   materials: number;
   vat: number;
-  materials_items: { name: string; qty: number; price: number }[];
+  materials_items: { name: string; qty: number; price: number; unit?: string }[];
   receipts: string[];
   invoiced_at: string | null;
   paid_at: string | null;
@@ -34,7 +34,7 @@ export interface JobPost {
   budget: number;
   city: string;
   postcode_area: string;
-  photo_url?: string;
+  photo_url?: string | null;
   ai_scope: string | null;
   ai_materials: string[] | null;
   applications?: number;
