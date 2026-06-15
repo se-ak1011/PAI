@@ -1,34 +1,28 @@
 /*
- * @Description: 
+ * @Description: 404 fallback
  */
 
-// Powered by OnSpace.AI
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors, Typography, Radius } from '@/constants/theme';
 
 export default function NotFoundScreen() {
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#0a0a0a', '#1a1a1a']}
-        style={StyleSheet.absoluteFillObject}
-      />
-      
       <View style={styles.content}>
-        <MaterialIcons name="photo-camera" size={80} color="#FFD700" />
-        <Text style={styles.title}>Page Not Found</Text>
+        <MaterialIcons name="report-problem" size={72} color={Colors.primary} />
+        <Text style={styles.title}>Page not found</Text>
         <Text style={styles.message}>
-          The moment you're looking for seems to have been lost in the shadows.
+          That page doesn't exist or has been moved.
         </Text>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.homeButton}
           onPress={() => router.push('/')}
         >
-          <Text style={styles.homeButtonText}>Return Home</Text>
+          <Text style={styles.homeButtonText}>Return home</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -38,37 +32,33 @@ export default function NotFoundScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: Colors.bg,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    ...Typography.brandMD,
     marginTop: 20,
     marginBottom: 10,
   },
   message: {
-    fontSize: 16,
-    color: '#CCCCCC',
+    ...Typography.bodyMD,
+    color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: 40,
-    lineHeight: 22,
   },
   homeButton: {
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 25,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: Radius.md,
   },
   homeButtonText: {
-    color: '#0a0a0a',
-    fontWeight: 'bold',
-    fontSize: 16,
+    ...Typography.btnMD,
+    color: Colors.textInverse,
   },
 });

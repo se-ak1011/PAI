@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     padding: 24, backgroundColor: Colors.primaryDim,
   },
-  docBrand: { fontSize: 28, fontWeight: '900', fontStyle: 'italic', color: Colors.primaryGlow, letterSpacing: -1 },
+  docBrand: { fontSize: 28, fontWeight: '900', color: Colors.primaryGlow, letterSpacing: -1 },
   docTagline: { ...Typography.labelSM, color: Colors.textMuted, marginTop: 2 },
   docHeaderRight: { alignItems: 'flex-end', gap: 4 },
   docInvLabel: { ...Typography.labelXS, color: Colors.textMuted },
