@@ -13,7 +13,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.paii.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCalendarsUsageDescription": "This app needs access to your calendar to manage availability and schedule events.",
+        "NSRemindersUsageDescription": "This app may use reminders to help you stay on top of calendar-related tasks."
       },
       "config": {
         "usesNonExemptEncryption": false
