@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { getSupabaseClient } from '@/template';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useContext } from 'react';
@@ -64,8 +64,33 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const [jobPosts, setJobPosts] = useState<JobPost[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const supabase = getSupabaseClient();
+  const supabase = useMemo(() => {
+    try {
+      return getSupabaseClient();
+    } catch (error) {
+      console.warn('[JobsContext] Supabase client unavailable; skipping startup sync:', error);
+      return null;
+    }
+  }, []);
   const user = auth?.user ?? null;
+
+  if (!supabase) {
+    return (
+      <JobsContext.Provider value={{
+        privateJobs: [],
+        jobPosts: [],
+        loading: false,
+        addPrivateJob: async () => {},
+        updatePrivateJob: async () => {},
+        deletePrivateJob: async () => {},
+        addJobPost: async () => {},
+        refreshJobs: async () => {},
+        refreshJobPosts: async () => {},
+      }}>
+        {children}
+      </JobsContext.Provider>
+    );
+  }
 
   const refreshJobs = useCallback(async () => {
     if (!user || (user.account_type !== 'contractor' && user.account_type !== 'both')) return;

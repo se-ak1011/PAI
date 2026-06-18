@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { getSupabaseClient } from '@/template';
 import { withTimeout } from '@/utils/asyncTimeout';
 import type { Session } from '@supabase/supabase-js';
@@ -97,7 +97,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [operationLoading, setOperationLoading] = useState(false);
 
-  const supabase = getSupabaseClient();
+  const supabase = useMemo(() => {
+    try {
+      return getSupabaseClient();
+    } catch (error) {
+      console.warn('[AuthContext] Supabase client unavailable during startup:', error);
+      return null;
+    }
+  }, []);
+
+  if (!supabase) {
+    const unavailable = async () => ({ error: 'Supabase is not configured. Check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.' });
+
+    return (
+      <AuthContext.Provider value={{
+        user: null,
+        session: null,
+        loading: false,
+        operationLoading: false,
+        isAuthenticated: false,
+        isOnboarded: false,
+        login: unavailable,
+        signup: unavailable,
+        signInWithGoogle: unavailable,
+        logout: async () => {},
+        deleteAccount: unavailable,
+        completeOnboarding: async () => {},
+        updateProfile: async () => {},
+        refreshProfile: async () => {},
+      }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
 
   const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     const { data, error } = await withTimeout(
