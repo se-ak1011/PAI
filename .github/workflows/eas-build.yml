@@ -44,10 +44,18 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Write App Store Connect API key
+        env:
+          ASC_API_KEY_PRIVATE_KEY: ${{ secrets.ASC_API_KEY_PRIVATE_KEY }}
+        run: |
+          mkdir -p .expo
+          printf '%s\n' "$ASC_API_KEY_PRIVATE_KEY" > .expo/asc_key.p8
+          chmod 600 .expo/asc_key.p8
+
       - name: Start EAS build
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
-          ASC_API_KEY_ISSUER_ID: ${{ secrets.ASC_API_KEY_ISSUER_ID }}
-          ASC_API_KEY_PRIVATE_KEY: ${{ secrets.ASC_API_KEY_PRIVATE_KEY }}
+          EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/.expo/asc_key.p8
+          EXPO_ASC_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_API_KEY_ISSUER_ID }}
         run: eas build --platform ios --profile preview --non-interactive --no-wait
