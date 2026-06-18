@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { getSupabaseClient } from '@/template';
+import { withTimeout } from '@/utils/asyncTimeout';
 import type { Session } from '@supabase/supabase-js';
 
 export type UserRole = 'contractor' | 'customer' | 'both';
@@ -60,6 +61,36 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_STARTUP_TIMEOUT_MS = 6000;
+const PROFILE_SYNC_TIMEOUT_MS = 6000;
+
+function profileFromSession(session: Session): UserProfile {
+  const metadata = session.user.user_metadata ?? {};
+  const accountType = (metadata.account_type as UserRole) ?? 'contractor';
+
+  return {
+    id: session.user.id,
+    email: session.user.email ?? '',
+    username: metadata.username,
+    display_name: metadata.username || session.user.email?.split('@')[0],
+    account_type: accountType,
+    trades: [],
+    tax_rate: 30,
+    available: true,
+    onboarding_complete: false,
+    flexible_pricing: false,
+    customer_profile_complete: false,
+    subscription_status: 'free_trial',
+    trial_ends_at: null,
+    trial_started_at: null,
+    saved_trades: [],
+    saved_postcode_areas: [],
+    portfolio_images: [],
+    social_links: {},
+    availability_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -69,11 +100,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = getSupabaseClient();
 
   const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const { data, error } = await withTimeout(
+      supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single(),
+      PROFILE_SYNC_TIMEOUT_MS,
+      `[AuthContext] Timed out loading user profile after ${PROFILE_SYNC_TIMEOUT_MS}ms`
+    );
     if (error || !data) return null;
 
     const accountType = (data.account_type as UserRole) ?? 'contractor';
@@ -116,14 +151,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          AUTH_STARTUP_TIMEOUT_MS,
+          `[AuthContext] Timed out restoring auth session after ${AUTH_STARTUP_TIMEOUT_MS}ms`
+        );
         if (canceled) return;
 
         setSession(session);
         if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
+          const profile = await fetchProfile(session.user.id).catch((error) => {
+            console.warn('[AuthContext] Failed to sync profile during startup:', error);
+            return null;
+          });
           if (canceled) return;
-          setUser(profile);
+          setUser(profile ?? profileFromSession(session));
         }
       } catch (error) {
         console.warn('[AuthContext] Failed to initialize session:', error);
@@ -141,8 +183,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        setUser(profile);
+        const profile = await fetchProfile(session.user.id).catch((error) => {
+          console.warn('[AuthContext] Failed to sync profile after auth state change:', error);
+          return null;
+        });
+        setUser(profile ?? profileFromSession(session));
       } else {
         setUser(null);
       }

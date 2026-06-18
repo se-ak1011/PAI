@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useCallback, ReactNode } fro
 import { getSupabaseClient } from '@/template';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useContext } from 'react';
+import { withTimeout } from '@/utils/asyncTimeout';
 
 export interface PrivateJob {
   id: string;
@@ -55,6 +56,8 @@ interface JobsContextType {
 
 export const JobsContext = createContext<JobsContextType | undefined>(undefined);
 
+const JOBS_SYNC_TIMEOUT_MS = 8000;
+
 export function JobsProvider({ children }: { children: ReactNode }) {
   const auth = useContext(AuthContext);
   const [privateJobs, setPrivateJobs] = useState<PrivateJob[]>([]);
@@ -66,11 +69,15 @@ export function JobsProvider({ children }: { children: ReactNode }) {
 
   const refreshJobs = useCallback(async () => {
     if (!user || (user.account_type !== 'contractor' && user.account_type !== 'both')) return;
-    const { data, error } = await supabase
-      .from('private_jobs')
-      .select('*')
-      .eq('contractor_id', user.id)
-      .order('created_at', { ascending: false });
+    const { data, error } = await withTimeout(
+      supabase
+        .from('private_jobs')
+        .select('*')
+        .eq('contractor_id', user.id)
+        .order('created_at', { ascending: false }),
+      JOBS_SYNC_TIMEOUT_MS,
+      `[JobsContext] Timed out syncing private jobs after ${JOBS_SYNC_TIMEOUT_MS}ms`
+    );
     if (!error && data) {
       setPrivateJobs(data.map(j => ({
         ...j,
@@ -81,14 +88,18 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   const refreshJobPosts = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('job_posts')
-      .select(`
-        *,
-        user_profiles!job_posts_client_id_fkey(username, avatar_url),
-        job_applications(id)
-      `)
-      .order('created_at', { ascending: false });
+    const { data, error } = await withTimeout(
+      supabase
+        .from('job_posts')
+        .select(`
+          *,
+          user_profiles!job_posts_client_id_fkey(username, avatar_url),
+          job_applications(id)
+        `)
+        .order('created_at', { ascending: false }),
+      JOBS_SYNC_TIMEOUT_MS,
+      `[JobsContext] Timed out syncing marketplace jobs after ${JOBS_SYNC_TIMEOUT_MS}ms`
+    );
     if (!error && data) {
       setJobPosts(data.map((p: any) => ({
         id: p.id,
@@ -117,7 +128,15 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       return;
     }
     setLoading(true);
-    Promise.all([refreshJobs(), refreshJobPosts()]).finally(() => setLoading(false));
+    Promise.allSettled([refreshJobs(), refreshJobPosts()])
+      .then((results) => {
+        results.forEach((result) => {
+          if (result.status === 'rejected') {
+            console.warn('[JobsContext] Startup sync failed:', result.reason);
+          }
+        });
+      })
+      .finally(() => setLoading(false));
   }, [user?.id]);
 
   const addPrivateJob = async (job: Omit<PrivateJob, 'id' | 'created_at'>) => {
