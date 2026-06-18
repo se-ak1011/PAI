@@ -115,27 +115,9 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  if (!supabase) {
-    return (
-      <TaxPotContext.Provider value={{
-        manualIncome: [],
-        paiIncome: [],
-        allIncome: [],
-        summary: calcSummary([], [], taxRate),
-        taxRate,
-        loading: false,
-        setTaxRate: (rate: number) => setTaxRateState(rate),
-        addManualIncome: async () => {},
-        deleteManualIncome: async () => {},
-        addPAIJobIncome: async () => {},
-        refresh: async () => {},
-      }}>
-        {children}
-      </TaxPotContext.Provider>
-    );
-  }
-
+  // Always define refresh as a hook so it is called unconditionally on every render.
   const refresh = useCallback(async () => {
+    if (!supabase) return;
     if (!user || (user.account_type !== 'contractor' && user.account_type !== 'both')) return;
     setLoading(true);
     try {
@@ -191,16 +173,39 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
       if (user.tax_rate) setTaxRateState(user.tax_rate);
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [supabase, user?.id]);
 
+  // Always call useEffect unconditionally; guard the body for the null-supabase case.
   useEffect(() => {
+    if (!supabase) return;
     if (!user) {
       setManualIncome([]);
       return;
     }
     if (user.tax_rate) setTaxRateState(user.tax_rate);
     refresh();
-  }, [user?.id]);
+  }, [supabase, user?.id]);
+
+  // Conditional render for when Supabase is unavailable — placed after all hooks.
+  if (!supabase) {
+    return (
+      <TaxPotContext.Provider value={{
+        manualIncome: [],
+        paiIncome: [],
+        allIncome: [],
+        summary: calcSummary([], [], taxRate),
+        taxRate,
+        loading: false,
+        setTaxRate: (rate: number) => setTaxRateState(rate),
+        addManualIncome: async () => {},
+        deleteManualIncome: async () => {},
+        addPAIJobIncome: async () => {},
+        refresh: async () => {},
+      }}>
+        {children}
+      </TaxPotContext.Provider>
+    );
+  }
 
   const setTaxRate = async (rate: number) => {
     setTaxRateState(rate);
