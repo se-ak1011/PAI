@@ -45,4 +45,9 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Start EAS build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_KEY_ISSUER_ID: ${{ secrets.ASC_API_KEY_ISSUER_ID }}
+          ASC_API_KEY_PRIVATE_KEY: ${{ secrets.ASC_API_KEY_PRIVATE_KEY }}
         run: eas build --platform ios --profile preview --non-interactive --no-wait
