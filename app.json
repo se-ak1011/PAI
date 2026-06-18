@@ -11,10 +11,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pai.app"
+      "bundleIdentifier": "com.paii.app"
     },
     "android": {
-      "package": "com.pai.app",
+      "package": "com.paii.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#12171C"
