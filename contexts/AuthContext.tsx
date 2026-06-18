@@ -222,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       <AuthContext.Provider value={{
         user: null,
         session: null,
-        loading,
+        loading: false,
         operationLoading: false,
         isAuthenticated: false,
         isOnboarded: false,

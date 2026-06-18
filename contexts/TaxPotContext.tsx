@@ -184,7 +184,7 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
     }
     if (user.tax_rate) setTaxRateState(user.tax_rate);
     refresh();
-  }, [supabase, user?.id]);
+  }, [supabase, user?.id, refresh]);
 
   // Conditional render for when Supabase is unavailable — placed after all hooks.
   if (!supabase) {
