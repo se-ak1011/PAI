@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { getSupabaseClient } from '@/template';
 import { withTimeout } from '@/utils/asyncTimeout';
 import type { Session } from '@supabase/supabase-js';
@@ -106,32 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  if (!supabase) {
-    const unavailable = async () => ({ error: 'Supabase is not configured. Check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.' });
-
-    return (
-      <AuthContext.Provider value={{
-        user: null,
-        session: null,
-        loading: false,
-        operationLoading: false,
-        isAuthenticated: false,
-        isOnboarded: false,
-        login: unavailable,
-        signup: unavailable,
-        signInWithGoogle: unavailable,
-        logout: async () => {},
-        deleteAccount: unavailable,
-        completeOnboarding: async () => {},
-        updateProfile: async () => {},
-        refreshProfile: async () => {},
-      }}>
-        {children}
-      </AuthContext.Provider>
-    );
-  }
-
-  const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
+  // Always define fetchProfile as a hook so it is called unconditionally on every render.
+  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
+    if (!supabase) return null;
     const { data, error } = await withTimeout(
       supabase
         .from('user_profiles')
@@ -176,9 +153,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       social_links: data.social_links || {},
       availability_days: data.availability_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     };
-  };
+  }, [supabase]);
 
+  // Always call useEffect unconditionally; guard the body for the null-supabase case.
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     let canceled = false;
 
     const initializeAuth = async () => {
@@ -229,7 +212,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canceled = true;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase, fetchProfile]);
+
+  // Conditional render for when Supabase is unavailable — placed after all hooks.
+  if (!supabase) {
+    const unavailable = async () => ({ error: 'Supabase is not configured. Check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.' });
+
+    return (
+      <AuthContext.Provider value={{
+        user: null,
+        session: null,
+        loading: false,
+        operationLoading: false,
+        isAuthenticated: false,
+        isOnboarded: false,
+        login: unavailable,
+        signup: unavailable,
+        signInWithGoogle: unavailable,
+        logout: async () => {},
+        deleteAccount: unavailable,
+        completeOnboarding: async () => {},
+        updateProfile: async () => {},
+        refreshProfile: async () => {},
+      }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
 
   const login = async (email: string, password: string): Promise<{ error: string | null }> => {
     setOperationLoading(true);

@@ -74,25 +74,9 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   }, []);
   const user = auth?.user ?? null;
 
-  if (!supabase) {
-    return (
-      <JobsContext.Provider value={{
-        privateJobs: [],
-        jobPosts: [],
-        loading: false,
-        addPrivateJob: async () => {},
-        updatePrivateJob: async () => {},
-        deletePrivateJob: async () => {},
-        addJobPost: async () => {},
-        refreshJobs: async () => {},
-        refreshJobPosts: async () => {},
-      }}>
-        {children}
-      </JobsContext.Provider>
-    );
-  }
-
+  // Always define hooks unconditionally; guard the bodies for the null-supabase case.
   const refreshJobs = useCallback(async () => {
+    if (!supabase) return;
     if (!user || (user.account_type !== 'contractor' && user.account_type !== 'both')) return;
     const { data, error } = await withTimeout(
       supabase
@@ -110,9 +94,10 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         receipts: j.receipts || [],
       })));
     }
-  }, [user?.id]);
+  }, [supabase, user?.id]);
 
   const refreshJobPosts = useCallback(async () => {
+    if (!supabase) return;
     const { data, error } = await withTimeout(
       supabase
         .from('job_posts')
@@ -145,9 +130,10 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         created_at: p.created_at,
       })));
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
+    if (!supabase) return;
     if (!user) {
       setPrivateJobs([]);
       return;
@@ -162,7 +148,26 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         });
       })
       .finally(() => setLoading(false));
-  }, [user?.id]);
+  }, [supabase, user?.id]);
+
+  // Conditional render for when Supabase is unavailable — placed after all hooks.
+  if (!supabase) {
+    return (
+      <JobsContext.Provider value={{
+        privateJobs: [],
+        jobPosts: [],
+        loading: false,
+        addPrivateJob: async () => {},
+        updatePrivateJob: async () => {},
+        deletePrivateJob: async () => {},
+        addJobPost: async () => {},
+        refreshJobs: async () => {},
+        refreshJobPosts: async () => {},
+      }}>
+        {children}
+      </JobsContext.Provider>
+    );
+  }
 
   const addPrivateJob = async (job: Omit<PrivateJob, 'id' | 'created_at'>) => {
     if (!user) return;
