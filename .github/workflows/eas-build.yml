@@ -42,4 +42,4 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Start EAS build
-        run: eas build --platform ios --preview
+        run: eas build --platform all --preview
