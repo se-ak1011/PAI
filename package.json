@@ -9,8 +9,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "build": "npx expo export:web",
-    "vercel-build": "npx expo export:web"
+    "build": "npx expo export --platform web",
+    "vercel-build": "npx expo export --platform web",
+    "postinstall": "node -e \"if(!require('fs').existsSync('package-lock.json')) require('child_process').execSync('npm i --package-lock-only',{stdio:'inherit'})\""
   },
   "dependencies": {
     "@apollo/client": "^3.4.10",
