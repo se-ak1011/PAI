@@ -2,6 +2,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import 'react-native-url-polyfill/auto';
 import { SupabaseConfig } from './types';
 
@@ -26,12 +27,25 @@ class SupabaseManager {
     try {
       console.log(`[Template:Client] Creating Supabase client instance #${this.creationCount}`);
       
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      // Try to get Supabase URL and key from multiple sources
+      let supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      let supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      
+      // Fallback to Constants.expoConfig.extra (passed via app.config.js)
+      if (!supabaseUrl && Constants.expoConfig?.extra?.supabaseUrl) {
+        supabaseUrl = Constants.expoConfig.extra.supabaseUrl;
+        console.log('[Template:Client] Using supabaseUrl from Constants.expoConfig.extra');
+      }
+      
+      if (!supabaseAnonKey && Constants.expoConfig?.extra?.supabaseAnonKey) {
+        supabaseAnonKey = Constants.expoConfig.extra.supabaseAnonKey;
+        console.log('[Template:Client] Using supabaseAnonKey from Constants.expoConfig.extra');
+      }
       
       if (!supabaseUrl || !supabaseAnonKey) {
         const errorMsg = '[Template:Client] Supabase environment variables missing\n' +
-          'Please check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env file';
+          'Please check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env file\n' +
+          'Or check supabaseUrl and supabaseAnonKey in app.config.js extra field';
         console.error(errorMsg);
         throw new Error(errorMsg);
       }
