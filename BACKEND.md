@@ -4,29 +4,25 @@ This document describes PAI's backend: where it runs today, the standalone
 Supabase target reconstructed from the codebase, and the plan to move between
 them. The step-by-step cutover lives in [`MIGRATION_CHECKLIST.md`](./MIGRATION_CHECKLIST.md).
 
-> **Current status:** the live backend is **unchanged**. `EXPO_PUBLIC_SUPABASE_URL`
-> still points at the OnSpace instance. The work captured here is schema +
-> documentation only — no backend has been switched, no functions deployed, no
-> auth config touched.
+> **Current status:** the live backend is configured via `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY`. The work captured here is schema + documentation — deploy and configuration are managed outside this repo.
 
 ---
 
-## 1. Current backend — OnSpace
+## 1. Current backend
 
-PAI runs against a single **OnSpace-hosted, Supabase-compatible** backend. It is
-**not** a native `*.supabase.co` project.
+PAI runs against a single Supabase backend configured via environment variables. It may be self-hosted or hosted on Supabase Cloud; the app is backend-agnostic so long as `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` point to the correct project.
 
 | Aspect | Detail |
 |--------|--------|
-| Endpoint | `https://<project>.backend.onspace.ai` (set via `EXPO_PUBLIC_SUPABASE_URL`) |
+| Endpoint | Set via `EXPO_PUBLIC_SUPABASE_URL` |
 | Anon key | `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
 | Client SDK | `@supabase/supabase-js` (`^2.50.0`) — the only backend SDK in the app |
 | Client creation | Once, in `template/core/client.ts`; consumed app-wide via `getSupabaseClient()` from `@/template`. Never call `createClient()` elsewhere. |
 | Auth | Supabase Auth — email/password + Google OAuth (PKCE). Session persisted to AsyncStorage (native) / localStorage (web). |
 | Auth logic | `contexts/AuthContext.tsx` (the template's bundled auth module was removed as dead code). |
-| Edge functions | `supabase/functions/ai-quote/index.ts` — runs on the OnSpace instance, calls OpenAI server-side via `OPENAI_API_KEY`. The repo copy is source only; it must be redeployed on the target to take effect. |
-| Schema & RLS | Historically managed **on the OnSpace instance** — there were no migrations in the repo. They are now reconstructed under `supabase/migrations/` (see §3). |
-| Config scaffold | `template/core/` is the OnSpace SDK scaffold. Declared modules: `auth` enabled (profile table `user_profiles`), **`payments: false`, `storage: false`**. |
+| Edge functions | `supabase/functions/ai-quote/index.ts` — calls OpenAI server-side via `OPENAI_API_KEY`. The repo copy is source only and must be deployed to your Supabase project to take effect. |
+| Schema & RLS | Managed in the Supabase project; the migrations in `supabase/migrations/` describe the expected schema and policies. |
+| Config scaffold | `template/core/` is the SDK scaffold. Declared modules: `auth` enabled (profile table `user_profiles`), **`payments: false`, `storage: false`**. |
 
 ### Not actually wired up
 
@@ -122,10 +118,10 @@ The detailed, copy-pasteable runbook is in
 2. **Apply** the four migrations (Supabase CLI or SQL editor, in order).
 3. **Configure auth providers** (email/password + Google OAuth, redirect URLs).
 4. **Deploy** the `ai-quote` edge function and set `OPENAI_API_KEY`.
-5. **Migrate data** from OnSpace if existing rows must carry over.
+5. **Migrate data** from an existing project if existing rows must carry over.
 6. **Repoint** `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` — the
    single cutover step. **Deferred — not done yet.**
-7. **Verify** end-to-end, then decommission OnSpace.
+7. **Verify** end-to-end, then decommission any legacy backend when safe.
 
 ### Out of scope for the backend move
 

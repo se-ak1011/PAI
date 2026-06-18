@@ -2,6 +2,7 @@
   "expo": {
     "name": "PAI",
     "slug": "pai",
+    "owner": "drained-store",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
@@ -10,10 +11,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pai.app"
+      "bundleIdentifier": "com.paii.app"
     },
     "android": {
-      "package": "com.pai.app",
+      "package": "com.paii.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#12171C"
@@ -43,7 +44,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "edb679d4-25ed-426d-87e7-a027c388b0c1"
+        "projectId": "edb679df-25ed-42e6-87e7-a027c38860c1"
       }
     }
   }
