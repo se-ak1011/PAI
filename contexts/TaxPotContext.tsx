@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext, useMemo, ReactNode } from 'react';
 import { getSupabaseClient } from '@/template';
 import { AuthContext } from '@/contexts/AuthContext';
 import { withTimeout } from '@/utils/asyncTimeout';
@@ -106,7 +106,34 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
   const [taxRate, setTaxRateState] = useState(30);
   const [loading, setLoading] = useState(false);
 
-  const supabase = getSupabaseClient();
+  const supabase = useMemo(() => {
+    try {
+      return getSupabaseClient();
+    } catch (error) {
+      console.warn('[TaxPotContext] Supabase client unavailable; skipping startup sync:', error);
+      return null;
+    }
+  }, []);
+
+  if (!supabase) {
+    return (
+      <TaxPotContext.Provider value={{
+        manualIncome: [],
+        paiIncome: [],
+        allIncome: [],
+        summary: calcSummary([], [], taxRate),
+        taxRate,
+        loading: false,
+        setTaxRate: (rate: number) => setTaxRateState(rate),
+        addManualIncome: async () => {},
+        deleteManualIncome: async () => {},
+        addPAIJobIncome: async () => {},
+        refresh: async () => {},
+      }}>
+        {children}
+      </TaxPotContext.Provider>
+    );
+  }
 
   const refresh = useCallback(async () => {
     if (!user || (user.account_type !== 'contractor' && user.account_type !== 'both')) return;
