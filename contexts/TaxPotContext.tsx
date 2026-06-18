@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, ReactNode } from 'react';
 import { getSupabaseClient } from '@/template';
 import { AuthContext } from '@/contexts/AuthContext';
+import { withTimeout } from '@/utils/asyncTimeout';
 
 export interface ManualIncomeEntry {
   id: string;
@@ -59,6 +60,8 @@ interface TaxPotContextType {
 
 export const TaxPotContext = createContext<TaxPotContextType | undefined>(undefined);
 
+const TAX_SYNC_TIMEOUT_MS = 8000;
+
 function calcSummary(
   manual: ManualIncomeEntry[],
   pai: PAIIncomeEntry[],
@@ -108,23 +111,34 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     if (!user || (user.account_type !== 'contractor' && user.account_type !== 'both')) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from('manual_income')
-      .select('*')
-      .eq('contractor_id', user.id)
-      .order('date', { ascending: false });
-    if (!error && data) {
-      setManualIncome(data.map(i => ({ ...i, source: 'manual' as const })));
-    }
-    // Load PAI income from paid private jobs
-    const { data: paiData } = await supabase
-      .from('private_jobs')
-      .select('id, title, customer, total, paid_at, tax_rate')
-      .eq('contractor_id', user.id)
-      .eq('status', 'paid')
-      .not('paid_at', 'is', null);
-    if (paiData) {
-      const paiEntries: PAIIncomeEntry[] = paiData.map((j: any) => {
+    try {
+      const [{ data, error }, { data: paiData }] = await Promise.all([
+        withTimeout(
+          supabase
+            .from('manual_income')
+            .select('*')
+            .eq('contractor_id', user.id)
+            .order('date', { ascending: false }),
+          TAX_SYNC_TIMEOUT_MS,
+          `[TaxPotContext] Timed out syncing manual income after ${TAX_SYNC_TIMEOUT_MS}ms`
+        ),
+        withTimeout(
+          supabase
+            .from('private_jobs')
+            .select('id, title, customer, total, paid_at, tax_rate')
+            .eq('contractor_id', user.id)
+            .eq('status', 'paid')
+            .not('paid_at', 'is', null),
+          TAX_SYNC_TIMEOUT_MS,
+          `[TaxPotContext] Timed out syncing PAI income after ${TAX_SYNC_TIMEOUT_MS}ms`
+        ),
+      ]);
+
+      if (!error && data) {
+        setManualIncome(data.map(i => ({ ...i, source: 'manual' as const })));
+      }
+
+      const paiEntries: PAIIncomeEntry[] = (paiData ?? []).map((j: any) => {
         const tr = j.tax_rate ?? taxRate;
         const tax_set_aside = Math.round(j.total * (tr / 100) * 100) / 100;
         return {
@@ -143,10 +157,13 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
         };
       });
       setPaiIncome(paiEntries);
+    } catch (error) {
+      console.warn('[TaxPotContext] Startup sync failed:', error);
+    } finally {
+      // Sync tax_rate from profile, even if remote income sync failed.
+      if (user.tax_rate) setTaxRateState(user.tax_rate);
+      setLoading(false);
     }
-    // Sync tax_rate from profile
-    if (user.tax_rate) setTaxRateState(user.tax_rate);
-    setLoading(false);
   }, [user?.id]);
 
   useEffect(() => {
