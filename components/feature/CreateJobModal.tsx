@@ -237,7 +237,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
             <View style={styles.stepContent}>
               <Text style={styles.stepTitle}>Describe the job</Text>
               <Text style={styles.stepSub}>
-                Keep it simple — even "replace kitchen taps in M1" works. AI handles the rest using your rates and preferred shop.
+                Keep it simple — even “replace kitchen taps in M1” works. AI handles the rest using your rates and preferred shop.
               </Text>
 
               {/* Description input */}
