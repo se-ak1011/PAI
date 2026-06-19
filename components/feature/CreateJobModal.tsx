@@ -8,7 +8,7 @@ import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { TRADE_CATEGORIES, PLATFORM_PRINCIPLES } from '@/constants/config';
 import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { generateAIQuote, AIQuoteResult } from '@/services/aiService';
 import { MaterialIcons } from '@expo/vector-icons';
 

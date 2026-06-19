@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AlertProvider } from '@/template';
+import { AlertProvider } from '@/template/ui';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { JobsProvider } from '@/contexts/JobsContext';
 import { TaxPotProvider } from '@/contexts/TaxPotContext';
@@ -16,6 +16,7 @@ SplashScreen.preventAutoHideAsync().catch((error) => {
 });
 
 export default function RootLayout() {
+  console.log(`[RootLayout] Rendering root layout on ${Platform.OS}`);
   const splashHiddenRef = useRef(false);
 
   const hideSplashScreen = useCallback(async (reason: string) => {
@@ -31,11 +32,15 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    console.log('[RootLayout] Startup providers mounted: AlertProvider, SafeAreaProvider, AuthProvider, RoleProvider, JobsProvider, TaxPotProvider');
     const timeoutId = setTimeout(() => {
       hideSplashScreen(`startup timeout ${SPLASH_SCREEN_TIMEOUT_MS}ms`);
     }, SPLASH_SCREEN_TIMEOUT_MS);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      console.log('[RootLayout] Startup providers unmounting');
+      clearTimeout(timeoutId);
+    };
   }, [hideSplashScreen]);
 
   return (

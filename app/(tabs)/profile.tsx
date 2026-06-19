@@ -18,10 +18,10 @@ import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
 import { TRADE_CATEGORIES, SUBSCRIPTION, getContractorProfileUrl } from '@/constants/config';
 import { useRole } from '@/hooks/useRole';
 import { useJobs } from '@/hooks/useJobs';
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 // MOCK_REVIEWS removed — reviews now fetched from Supabase below
 import { MaterialIcons } from '@expo/vector-icons';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { RoleSwitcherBar } from './_layout';
 
 // ─────────────────────────────────────────────

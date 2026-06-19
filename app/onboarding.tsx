@@ -8,7 +8,7 @@ import { PButton, PInput } from '@/components';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { TRADE_CATEGORIES, PLATFORM_PRINCIPLES } from '@/constants/config';
 import { useAuth } from '@/hooks/useAuth';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 
 // Steps: 0=Welcome, 1=Profile, 2=Trades(contractor), 3=TaxRate(contractor) or Done(customer)

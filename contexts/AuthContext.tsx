@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 import { withTimeout } from '@/utils/asyncTimeout';
 import type { Session } from '@supabase/supabase-js';
 

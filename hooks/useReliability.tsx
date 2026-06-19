@@ -9,7 +9,7 @@
  *   Caution       → avg < 2.8  or  would_work_again_pct < 40
  */
 import { useState, useEffect } from 'react';
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 
 // Reliability colours aligned to the industrial palette (no traffic-light primaries)
 export const RELIABILITY_COLOURS = {

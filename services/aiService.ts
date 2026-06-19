@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
 export interface AIQuoteResult {

@@ -7,9 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { PButton } from '@/components/ui/PButton';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { useAuth } from '@/hooks/useAuth';
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 import { getContractorProfileUrl } from '@/constants/config';
 import { MaterialIcons } from '@expo/vector-icons';
 

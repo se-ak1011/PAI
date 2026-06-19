@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import 'react-native-url-polyfill/auto';
 import { SupabaseConfig } from './types';
@@ -97,9 +96,13 @@ class SupabaseManager {
           return Promise.resolve();
         },
       };
-    } else {
-      return AsyncStorage;
     }
+
+    console.log(`[Template:Client] Loading native auth storage for ${Platform.OS}`);
+    // Keep the AsyncStorage TurboModule out of module evaluation/startup.
+    // It is only required when the Supabase client is actually created on native.
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    return AsyncStorage;
   }
 }
 

@@ -9,7 +9,7 @@ import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useJobs } from '@/hooks/useJobs';
 import { useTaxPot } from '@/hooks/useTaxPot';
 import { useAuth } from '@/hooks/useAuth';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { APP_NAME } from '@/constants/config';
 import { MaterialIcons } from '@expo/vector-icons';
 
