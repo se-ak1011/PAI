@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { InteractionManager } from 'react-native';
 import { getSupabaseClient } from '@/template/core';
 import { withTimeout } from '@/utils/asyncTimeout';
 import type { Session } from '@supabase/supabase-js';
@@ -64,6 +65,14 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const AUTH_STARTUP_TIMEOUT_MS = 6000;
 const PROFILE_SYNC_TIMEOUT_MS = 6000;
 
+function deferUntilAfterFirstPaint(task: () => void) {
+  const timeoutId = setTimeout(() => {
+    InteractionManager.runAfterInteractions(task);
+  }, 0);
+
+  return () => clearTimeout(timeoutId);
+}
+
 function profileFromSession(session: Session): UserProfile {
   const metadata = session.user.user_metadata ?? {};
   const accountType = (metadata.account_type as UserRole) ?? 'contractor';
@@ -96,14 +105,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [operationLoading, setOperationLoading] = useState(false);
+  const [supabase, setSupabase] = useState<ReturnType<typeof getSupabaseClient> | null>(null);
+  const [supabaseUnavailable, setSupabaseUnavailable] = useState(false);
 
-  const supabase = useMemo(() => {
-    try {
-      return getSupabaseClient();
-    } catch (error) {
-      console.warn('[AuthContext] Supabase client unavailable during startup:', error);
-      return null;
-    }
+  useEffect(() => {
+    let canceled = false;
+
+    const cancelDeferredStartup = deferUntilAfterFirstPaint(() => {
+      if (canceled) return;
+
+      try {
+        const client = getSupabaseClient();
+        if (!canceled) {
+          setSupabase(client);
+        }
+      } catch (error) {
+        console.warn('[AuthContext] Supabase client unavailable during background startup:', error);
+        if (!canceled) {
+          setSupabaseUnavailable(true);
+          setLoading(false);
+        }
+      }
+    });
+
+    return () => {
+      canceled = true;
+      cancelDeferredStartup();
+    };
   }, []);
 
   // Always define fetchProfile as a hook so it is called unconditionally on every render.
@@ -158,7 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Always call useEffect unconditionally; guard the body for the null-supabase case.
   useEffect(() => {
     if (!supabase) {
-      setLoading(false);
       return;
     }
 
@@ -214,15 +241,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [supabase, fetchProfile]);
 
-  // Conditional render for when Supabase is unavailable — placed after all hooks.
+  // Conditional render while Supabase startup has been deferred, or when configuration is unavailable — placed after all hooks.
   if (!supabase) {
-    const unavailable = async () => ({ error: 'Supabase is not configured. Check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.' });
+    const unavailable = async () => ({ error: supabaseUnavailable
+      ? 'Supabase is not configured. Check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.'
+      : 'Authentication is still starting. Please try again in a moment.' });
 
     return (
       <AuthContext.Provider value={{
         user: null,
         session: null,
-        loading: false,
+        loading: !supabaseUnavailable,
         operationLoading: false,
         isAuthenticated: false,
         isOnboarded: false,

@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect, useCallback, useContext, useMemo, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext, ReactNode } from 'react';
+import { InteractionManager } from 'react-native';
 import { getSupabaseClient } from '@/template/core';
 import { AuthContext } from '@/contexts/AuthContext';
 import { withTimeout } from '@/utils/asyncTimeout';
@@ -106,14 +107,28 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
   const [taxRate, setTaxRateState] = useState(30);
   const [loading, setLoading] = useState(false);
 
-  const supabase = useMemo(() => {
-    try {
-      return getSupabaseClient();
-    } catch (error) {
-      console.warn('[TaxPotContext] Supabase client unavailable; skipping startup sync:', error);
-      return null;
-    }
-  }, []);
+  const [supabase, setSupabase] = useState<ReturnType<typeof getSupabaseClient> | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let canceled = false;
+    const timeoutId = setTimeout(() => {
+      InteractionManager.runAfterInteractions(() => {
+        if (canceled) return;
+        try {
+          setSupabase(getSupabaseClient());
+        } catch (error) {
+          console.warn('[TaxPotContext] Supabase client unavailable; skipping background sync:', error);
+        }
+      });
+    }, 0);
+
+    return () => {
+      canceled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [user?.id]);
 
   // Always define refresh as a hook so it is called unconditionally on every render.
   const refresh = useCallback(async () => {
