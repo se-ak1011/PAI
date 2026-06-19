@@ -21,6 +21,21 @@ if (fs.existsSync(envPath)) {
 // Extract the values right after loading
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const isExpoGo = process.env.EXPO_GO === '1';
+const plugins = [
+  ...(isExpoGo ? [] : ['expo-dev-client']),
+  'expo-router',
+  [
+    'expo-splash-screen',
+    {
+      image: './assets/images/logo.png',
+      imageWidth: 200,
+      resizeMode: 'contain',
+      backgroundColor: '#12171C'
+    }
+  ],
+  'expo-web-browser'
+];
 
 console.log('[app.config.js] Loading env vars:');
 console.log('[app.config.js] EXPO_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'SET (' + supabaseUrl.substring(0, 30) + '...)' : 'UNSET');
@@ -78,20 +93,7 @@ module.exports = {
       output: "static",
       favicon: "./assets/images/logo.png"
     },
-    plugins: [
-      "expo-dev-client",
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          image: "./assets/images/logo.png",
-          imageWidth: 200,
-          resizeMode: "contain",
-          backgroundColor: "#12171C"
-        }
-      ],
-      "expo-web-browser"
-    ],
+    plugins,
     experiments: {
       typedRoutes: true
     }
