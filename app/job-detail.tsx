@@ -325,7 +325,7 @@ export default function JobDetailScreen() {
               onPress={() => router.push({ pathname: '/invoice', params: { id: job.id } })}
             >
               <MaterialIcons name="description" size={16} color={Colors.info} />
-              <Text style={styles.viewEstimateBtnText}>View &amp; Share Estimate</Text>
+              <Text style={styles.viewEstimateBtnText}>View & Share Estimate</Text>
             </Pressable>
           ) : null}
         </View>
@@ -422,7 +422,7 @@ export default function JobDetailScreen() {
       {/* Actual hours prompt for hourly invoicing */}
       {showHoursPrompt ? (
         <Pressable style={styles.promptOverlay} onPress={() => setShowHoursPrompt(false)}>
-          <Pressable style={styles.promptCard} onPress={() => { /* stop propagation */ }}>
+          <Pressable style={styles.promptCard} onPress={(e) => e.stopPropagation?.()}>
             <View style={styles.promptHeader}>
               <MaterialIcons name="schedule" size={20} color={Colors.primaryGlow} />
               <Text style={styles.promptTitle}>Enter Actual Hours</Text>

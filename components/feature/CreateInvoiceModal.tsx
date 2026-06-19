@@ -173,7 +173,7 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
                 <MaterialIcons name="schedule" size={16} color={jobType === 'hourly' ? Colors.textInverse : Colors.textSecondary} />
                 <View>
                   <Text style={[styles.jobTypeBtnLabel, jobType === 'hourly' && styles.jobTypeBtnLabelActive]}>Hourly Rate</Text>
-                  <Text style={[styles.jobTypeBtnSub, jobType === 'hourly' && styles.jobTypeBtnSubActive]}>Time &amp; materials</Text>
+                  <Text style={[styles.jobTypeBtnSub, jobType === 'hourly' && styles.jobTypeBtnSubActive]}>Time & materials</Text>
                 </View>
               </Pressable>
             </View>

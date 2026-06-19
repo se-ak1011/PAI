@@ -1,5 +1,5 @@
 -- ============================================================================
--- PAI — Hourly jobs support
+-- PAI-Trades — Hourly jobs support
 -- Adds job_type, hourly_rate, estimated_hours, actual_hours to private_jobs
 -- so contractors can create time-and-materials estimates and invoices.
 -- ============================================================================

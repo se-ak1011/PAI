@@ -121,8 +121,8 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
       // Pre-fill estimated hours from AI labour days (×8 hrs/day), rate from profile
       const aiDays = data.labourEstimate?.days ?? 1;
       setEstimatedHoursStr((aiDays * 8).toFixed(0));
-      if ((user as any)?.hourly_rate) {
-        setHourlyRateStr(String((user as any).hourly_rate));
+      if (user?.hourly_rate) {
+        setHourlyRateStr(String(user.hourly_rate));
       }
       setMaterialsOverride(data.totalEstimate.materialsTotal.toFixed(2));
     } else {
@@ -825,7 +825,7 @@ const styles = StyleSheet.create({
   jobTypeBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   jobTypeBtnLabel: { ...Typography.labelMD, color: Colors.textSecondary, fontWeight: '600' },
   jobTypeBtnLabelActive: { color: Colors.textInverse },
-  jobTypeBtnSub: { ...Typography.labelSM, color: Colors.textMuted, fontSize: 10 },
+  jobTypeBtnSub: { ...Typography.labelSM, color: Colors.textMuted },
   jobTypeBtnSubActive: { color: Colors.textInverse + 'CC' },
 
   // Hourly note banner

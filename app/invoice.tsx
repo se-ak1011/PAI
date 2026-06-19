@@ -97,7 +97,7 @@ export default function InvoiceScreen() {
       `Job:  ${job.title}`,
       ...(job.description ? [`      ${job.description}`] : []),
       ``,
-      `${labourDesc.padEnd(10)} £${job.labour.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
+      `${labourDesc.padEnd(20)} £${job.labour.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
       `Materials: £${job.materials.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
       ...(job.vat > 0 ? [`VAT (20%): £${job.vat.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`] : []),
       ``,
