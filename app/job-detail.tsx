@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -48,6 +48,9 @@ export default function JobDetailScreen() {
   const job = privateJobs.find(j => j.id === id);
   const [updating, setUpdating] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  // Actual hours prompt for hourly jobs
+  const [showHoursPrompt, setShowHoursPrompt] = useState(false);
+  const [actualHoursStr, setActualHoursStr] = useState('');
 
   // Reliability score — look up customer on PAI-marketplace jobs (have source_job_post_id + client_id)
   const [customerId, setCustomerId] = React.useState<string | null>(null);
@@ -85,6 +88,13 @@ export default function JobDetailScreen() {
   const handleStatusUpdate = async () => {
     if (!nextAction) return;
 
+    // "Send Invoice" — for hourly jobs, prompt for actual hours first
+    if (nextAction.next === 'invoiced' && job.job_type === 'hourly') {
+      setActualHoursStr(job.estimated_hours ? String(job.estimated_hours) : '');
+      setShowHoursPrompt(true);
+      return;
+    }
+
     // "Send Invoice" — update status then open invoice screen
     if (nextAction.next === 'invoiced') {
       setUpdating(true);
@@ -116,6 +126,32 @@ export default function JobDetailScreen() {
     }
     await updatePrivateJob(job.id, updates);
     setUpdating(false);
+  };
+
+  const handleConfirmActualHours = async () => {
+    const actualHours = parseFloat(actualHoursStr) || 0;
+    if (actualHours <= 0) {
+      showAlert('Required', 'Please enter the actual hours worked.');
+      return;
+    }
+    const hourlyRate = job.hourly_rate || 0;
+    const newLabour = actualHours * hourlyRate;
+    const newVat = job.vat > 0 ? Math.round((newLabour + job.materials) * 0.2 * 100) / 100 : 0;
+    const newTotal = newLabour + job.materials + newVat;
+    const today = new Date().toISOString().split('T')[0];
+
+    setShowHoursPrompt(false);
+    setUpdating(true);
+    await updatePrivateJob(job.id, {
+      status: 'invoiced',
+      invoiced_at: today,
+      actual_hours: actualHours,
+      labour: newLabour,
+      vat: newVat,
+      total: newTotal,
+    });
+    setUpdating(false);
+    router.push({ pathname: '/invoice', params: { id: job.id } });
   };
 
   const handleDelete = () => {
@@ -229,26 +265,69 @@ export default function JobDetailScreen() {
 
         {/* Financial breakdown */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quote Breakdown</Text>
+          <Text style={styles.sectionTitle}>
+            {job.job_type === 'hourly' ? 'Hourly Estimate Breakdown' : 'Quote Breakdown'}
+          </Text>
           <View style={styles.breakdownCard}>
-            <View style={styles.breakdownRow}>
-              <Text style={styles.breakdownLabel}>Labour</Text>
-              <Text style={styles.breakdownValue}>£{job.labour.toLocaleString()}</Text>
-            </View>
-            <View style={styles.breakdownRow}>
-              <Text style={styles.breakdownLabel}>Materials</Text>
-              <Text style={styles.breakdownValue}>£{job.materials.toLocaleString()}</Text>
-            </View>
-            <View style={styles.breakdownRow}>
-              <Text style={styles.breakdownLabel}>VAT (20%)</Text>
-              <Text style={styles.breakdownValue}>£{job.vat.toLocaleString()}</Text>
-            </View>
-            <View style={styles.breakdownDivider} />
-            <View style={styles.breakdownRow}>
-              <Text style={styles.totalLabel}>TOTAL</Text>
-              <Text style={styles.totalValue}>£{job.total.toLocaleString()}</Text>
-            </View>
+            {job.job_type === 'hourly' ? (
+              <>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>
+                    {job.actual_hours != null
+                      ? `Labour (${job.actual_hours} hrs × £${job.hourly_rate}/hr)`
+                      : `Labour est. (~${job.estimated_hours ?? '?'} hrs × £${job.hourly_rate ?? '?'}/hr)`}
+                  </Text>
+                  <Text style={styles.breakdownValue}>£{job.labour.toLocaleString()}</Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Materials</Text>
+                  <Text style={styles.breakdownValue}>£{job.materials.toLocaleString()}</Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>VAT (20%)</Text>
+                  <Text style={styles.breakdownValue}>£{job.vat.toLocaleString()}</Text>
+                </View>
+                <View style={styles.breakdownDivider} />
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.totalLabel}>
+                    {job.actual_hours != null ? 'INVOICE TOTAL' : 'ESTIMATE TOTAL'}
+                  </Text>
+                  <Text style={styles.totalValue}>£{job.total.toLocaleString()}</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Labour</Text>
+                  <Text style={styles.breakdownValue}>£{job.labour.toLocaleString()}</Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Materials</Text>
+                  <Text style={styles.breakdownValue}>£{job.materials.toLocaleString()}</Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>VAT (20%)</Text>
+                  <Text style={styles.breakdownValue}>£{job.vat.toLocaleString()}</Text>
+                </View>
+                <View style={styles.breakdownDivider} />
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.totalLabel}>TOTAL</Text>
+                  <Text style={styles.totalValue}>£{job.total.toLocaleString()}</Text>
+                </View>
+              </>
+            )}
           </View>
+
+          {/* View Estimate button for hourly pre-invoice jobs */}
+          {job.job_type === 'hourly' && !['invoiced', 'paid'].includes(job.status) ? (
+            <Pressable
+              style={styles.viewEstimateBtn}
+              onPress={() => router.push({ pathname: '/invoice', params: { id: job.id } })}
+            >
+              <MaterialIcons name="description" size={16} color={Colors.info} />
+              <Text style={styles.viewEstimateBtnText}>View &amp; Share Estimate</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {/* Materials */}
@@ -338,6 +417,47 @@ export default function JobDetailScreen() {
           customerName={job.customer || 'Customer'}
           jobTitle={job.title}
         />
+      ) : null}
+
+      {/* Actual hours prompt for hourly invoicing */}
+      {showHoursPrompt ? (
+        <Pressable style={styles.promptOverlay} onPress={() => setShowHoursPrompt(false)}>
+          <Pressable style={styles.promptCard} onPress={() => { /* stop propagation */ }}>
+            <View style={styles.promptHeader}>
+              <MaterialIcons name="schedule" size={20} color={Colors.primaryGlow} />
+              <Text style={styles.promptTitle}>Enter Actual Hours</Text>
+            </View>
+            <Text style={styles.promptSub}>
+              How many hours did you actually work on this job?
+              {job.estimated_hours ? ` (Estimated: ${job.estimated_hours} hrs)` : ''}
+            </Text>
+            <View style={styles.promptInputWrap}>
+              <TextInput
+                style={styles.promptInput}
+                value={actualHoursStr}
+                onChangeText={setActualHoursStr}
+                keyboardType="decimal-pad"
+                placeholder="e.g. 8"
+                placeholderTextColor={Colors.textMuted}
+                autoFocus
+              />
+              <Text style={styles.promptInputUnit}>hrs</Text>
+            </View>
+            {job.hourly_rate && parseFloat(actualHoursStr) > 0 ? (
+              <Text style={styles.promptCalc}>
+                Labour: {parseFloat(actualHoursStr)} hrs × £{job.hourly_rate}/hr = £{(parseFloat(actualHoursStr) * job.hourly_rate).toFixed(2)}
+              </Text>
+            ) : null}
+            <View style={styles.promptBtns}>
+              <Pressable style={styles.promptCancel} onPress={() => setShowHoursPrompt(false)}>
+                <Text style={styles.promptCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.promptConfirm} onPress={handleConfirmActualHours}>
+                <Text style={styles.promptConfirmText}>Create Invoice</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       ) : null}
     </SafeAreaView>
   );
@@ -432,4 +552,49 @@ const styles = StyleSheet.create({
     padding: 12, marginHorizontal: Spacing.md, marginBottom: 4,
   },
   reviewCustomerText: { ...Typography.labelSM, color: Colors.textMuted },
+
+  // View Estimate button
+  viewEstimateBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.info + '44',
+    backgroundColor: Colors.infoDim, padding: 12, marginTop: 8,
+  },
+  viewEstimateBtnText: { ...Typography.labelMD, color: Colors.info },
+
+  // Actual hours prompt overlay
+  promptOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center', justifyContent: 'center',
+    zIndex: 200, padding: Spacing.md,
+  },
+  promptCard: {
+    width: '100%', backgroundColor: Colors.card, borderRadius: Radius.xl,
+    borderWidth: 1, borderColor: Colors.border, padding: 20, gap: 14,
+  },
+  promptHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  promptTitle: { ...Typography.headingMD },
+  promptSub: { ...Typography.bodyMD, color: Colors.textSecondary, lineHeight: 22 },
+  promptInputWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14,
+  },
+  promptInput: {
+    flex: 1, height: 52, ...Typography.dataLG, color: Colors.textPrimary,
+  },
+  promptInputUnit: { ...Typography.labelMD, color: Colors.textMuted },
+  promptCalc: { ...Typography.labelMD, color: Colors.primaryGlow },
+  promptBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  promptCancel: {
+    flex: 1, height: 48, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  promptCancelText: { ...Typography.btnSM, color: Colors.textSecondary },
+  promptConfirm: {
+    flex: 2, height: 48, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.primary, borderRadius: Radius.md,
+  },
+  promptConfirmText: { ...Typography.btnMD, color: Colors.textInverse },
 });

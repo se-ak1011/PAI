@@ -30,8 +30,16 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
   const [includeVat, setIncludeVat] = useState(false);
   const [category, setCategory] = useState(INCOME_CATEGORIES[0]);
   const [saving, setSaving] = useState(false);
+  // Hourly fields
+  const [jobType, setJobType] = useState<'fixed' | 'hourly'>('fixed');
+  const [hourlyRateStr, setHourlyRateStr] = useState('');
+  const [actualHoursStr, setActualHoursStr] = useState('');
 
-  const labour = parseFloat(labourStr) || 0;
+  const hourlyRate = parseFloat(hourlyRateStr) || 0;
+  const actualHours = parseFloat(actualHoursStr) || 0;
+  const labour = jobType === 'hourly'
+    ? hourlyRate * actualHours
+    : parseFloat(labourStr) || 0;
   const materials = parseFloat(materialsStr) || 0;
   const subtotal = labour + materials;
   const vat = includeVat ? Math.round(subtotal * 0.2 * 100) / 100 : 0;
@@ -46,6 +54,9 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
     setIncludeVat(false);
     setCategory(INCOME_CATEGORIES[0]);
     setSaving(false);
+    setJobType('fixed');
+    setHourlyRateStr('');
+    setActualHoursStr('');
   };
 
   const handleCreate = async () => {
@@ -57,7 +68,10 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
       showAlert('Required', 'Please enter a job title.');
       return;
     }
-    if (labour <= 0 && materials <= 0) {
+    if (jobType === 'hourly') {
+      if (hourlyRate <= 0) { showAlert('Required', 'Please enter a valid hourly rate.'); return; }
+      if (actualHours <= 0) { showAlert('Required', 'Please enter the actual hours worked.'); return; }
+    } else if (labour <= 0 && materials <= 0) {
       showAlert('Required', 'Enter at least a labour or materials amount.');
       return;
     }
@@ -80,6 +94,10 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
       invoiced_at: today,
       paid_at: null,
       source_job_post_id: null,
+      job_type: jobType,
+      hourly_rate: jobType === 'hourly' ? hourlyRate : null,
+      estimated_hours: jobType === 'hourly' ? actualHours : null,
+      actual_hours: jobType === 'hourly' ? actualHours : null,
     });
 
     setSaving(false);
@@ -132,6 +150,33 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
             <Text style={styles.infoText}>
               Creates a PAI invoice immediately. Once paid (outside PAI), mark it as paid to register income in your Tax Pot.
             </Text>
+          </View>
+
+          {/* Job type toggle */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Invoice Type</Text>
+            <View style={styles.jobTypeRow}>
+              <Pressable
+                style={[styles.jobTypeBtn, jobType === 'fixed' && styles.jobTypeBtnActive]}
+                onPress={() => setJobType('fixed')}
+              >
+                <MaterialIcons name="receipt-long" size={16} color={jobType === 'fixed' ? Colors.textInverse : Colors.textSecondary} />
+                <View>
+                  <Text style={[styles.jobTypeBtnLabel, jobType === 'fixed' && styles.jobTypeBtnLabelActive]}>Fixed Price</Text>
+                  <Text style={[styles.jobTypeBtnSub, jobType === 'fixed' && styles.jobTypeBtnSubActive]}>Agreed quote</Text>
+                </View>
+              </Pressable>
+              <Pressable
+                style={[styles.jobTypeBtn, jobType === 'hourly' && styles.jobTypeBtnActive]}
+                onPress={() => setJobType('hourly')}
+              >
+                <MaterialIcons name="schedule" size={16} color={jobType === 'hourly' ? Colors.textInverse : Colors.textSecondary} />
+                <View>
+                  <Text style={[styles.jobTypeBtnLabel, jobType === 'hourly' && styles.jobTypeBtnLabelActive]}>Hourly Rate</Text>
+                  <Text style={[styles.jobTypeBtnSub, jobType === 'hourly' && styles.jobTypeBtnSubActive]}>Time &amp; materials</Text>
+                </View>
+              </Pressable>
+            </View>
           </View>
 
           {/* Customer */}
@@ -198,36 +243,86 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
           {/* Amounts */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Amounts</Text>
-            <View style={styles.amountRow}>
-              <View style={[styles.inputWrap, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Labour (£)</Text>
-                <View style={styles.prefixInput}>
-                  <Text style={styles.prefix}>£</Text>
-                  <TextInput
-                    style={styles.prefixInputField}
-                    value={labourStr}
-                    onChangeText={setLabourStr}
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                    keyboardType="decimal-pad"
-                  />
+
+            {jobType === 'hourly' ? (
+              <>
+                <View style={styles.amountRow}>
+                  <View style={[styles.inputWrap, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>Hourly Rate (£/hr)</Text>
+                    <View style={styles.prefixInput}>
+                      <Text style={styles.prefix}>£</Text>
+                      <TextInput
+                        style={styles.prefixInputField}
+                        value={hourlyRateStr}
+                        onChangeText={setHourlyRateStr}
+                        placeholder="45"
+                        placeholderTextColor={Colors.textMuted}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                  </View>
+                  <View style={[styles.inputWrap, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>Actual Hours</Text>
+                    <View style={styles.prefixInput}>
+                      <MaterialIcons name="schedule" size={14} color={Colors.textMuted} style={{ marginRight: 4 }} />
+                      <TextInput
+                        style={styles.prefixInputField}
+                        value={actualHoursStr}
+                        onChangeText={setActualHoursStr}
+                        placeholder="8"
+                        placeholderTextColor={Colors.textMuted}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                  </View>
+                </View>
+                <View style={[styles.inputWrap]}>
+                  <Text style={styles.inputLabel}>Materials (£)</Text>
+                  <View style={styles.prefixInput}>
+                    <Text style={styles.prefix}>£</Text>
+                    <TextInput
+                      style={styles.prefixInputField}
+                      value={materialsStr}
+                      onChangeText={setMaterialsStr}
+                      placeholder="0.00"
+                      placeholderTextColor={Colors.textMuted}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={styles.amountRow}>
+                <View style={[styles.inputWrap, { flex: 1 }]}>
+                  <Text style={styles.inputLabel}>Labour (£)</Text>
+                  <View style={styles.prefixInput}>
+                    <Text style={styles.prefix}>£</Text>
+                    <TextInput
+                      style={styles.prefixInputField}
+                      value={labourStr}
+                      onChangeText={setLabourStr}
+                      placeholder="0.00"
+                      placeholderTextColor={Colors.textMuted}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+                <View style={[styles.inputWrap, { flex: 1 }]}>
+                  <Text style={styles.inputLabel}>Materials (£)</Text>
+                  <View style={styles.prefixInput}>
+                    <Text style={styles.prefix}>£</Text>
+                    <TextInput
+                      style={styles.prefixInputField}
+                      value={materialsStr}
+                      onChangeText={setMaterialsStr}
+                      placeholder="0.00"
+                      placeholderTextColor={Colors.textMuted}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
                 </View>
               </View>
-              <View style={[styles.inputWrap, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Materials (£)</Text>
-                <View style={styles.prefixInput}>
-                  <Text style={styles.prefix}>£</Text>
-                  <TextInput
-                    style={styles.prefixInputField}
-                    value={materialsStr}
-                    onChangeText={setMaterialsStr}
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-              </View>
-            </View>
+            )}
 
             {/* VAT toggle */}
             <View style={styles.vatRow}>
@@ -246,10 +341,17 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
 
           {/* Totals summary */}
           <View style={styles.totalCard}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLineLabel}>Labour</Text>
-              <Text style={styles.totalLineValue}>£{labour.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
-            </View>
+            {jobType === 'hourly' && hourlyRate > 0 && actualHours > 0 ? (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLineLabel}>Labour ({actualHours} hrs × £{hourlyRate}/hr)</Text>
+                <Text style={styles.totalLineValue}>£{labour.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
+              </View>
+            ) : (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLineLabel}>Labour</Text>
+                <Text style={styles.totalLineValue}>£{labour.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
+              </View>
+            )}
             <View style={styles.totalRow}>
               <Text style={styles.totalLineLabel}>Materials</Text>
               <Text style={styles.totalLineValue}>£{materials.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
@@ -346,9 +448,23 @@ const styles = StyleSheet.create({
     borderColor: Colors.border, padding: 16, gap: 10,
   },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalLineLabel: { ...Typography.labelMD, color: Colors.textSecondary },
+  totalLineLabel: { ...Typography.labelMD, color: Colors.textSecondary, flex: 1, marginRight: 8 },
   totalLineValue: { ...Typography.dataMD },
   totalDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 2 },
   grandLabel: { ...Typography.labelMD, fontWeight: '700' },
   grandValue: { fontSize: 22, fontWeight: '800', color: Colors.primaryGlow },
+
+  // Job type toggle
+  jobTypeRow: { flexDirection: 'row', gap: 10 },
+  jobTypeBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.card, borderRadius: Radius.md,
+    borderWidth: 1.5, borderColor: Colors.border,
+    padding: 12,
+  },
+  jobTypeBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  jobTypeBtnLabel: { ...Typography.labelMD, color: Colors.textSecondary, fontWeight: '600' },
+  jobTypeBtnLabelActive: { color: Colors.textInverse },
+  jobTypeBtnSub: { ...Typography.labelSM, color: Colors.textMuted, fontSize: 10 },
+  jobTypeBtnSubActive: { color: Colors.textInverse + 'CC' },
 });
