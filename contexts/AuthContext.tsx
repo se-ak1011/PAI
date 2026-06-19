@@ -54,7 +54,7 @@ interface AuthContextType {
   signInWithGoogle: (role?: UserRole) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<{ error: string | null }>;
-  completeOnboarding: (data: Partial<UserProfile>) => Promise<void>;
+  completeOnboarding: (data: Partial<UserProfile>) => Promise<{ error: string | null }>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -231,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithGoogle: unavailable,
         logout: async () => {},
         deleteAccount: unavailable,
-        completeOnboarding: async () => {},
+        completeOnboarding: unavailable,
         updateProfile: async () => {},
         refreshProfile: async () => {},
       }}>
@@ -277,6 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         subscription_status: 'free_trial',
         trial_ends_at: null,
       });
+      if (data.session) setSession(data.session);
     }
     return { error: null };
   };
@@ -328,47 +329,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const completeOnboarding = async (data: Partial<UserProfile>) => {
-    if (!user) return;
+  const completeOnboarding = async (data: Partial<UserProfile>): Promise<{ error: string | null }> => {
+    if (!user) return { error: 'Not authenticated' };
     setOperationLoading(true);
 
     // Ensure account_type is valid — never allow null
     const accountType: UserRole = data.account_type || user.account_type || 'contractor';
 
-    const updateData: Record<string, unknown> = {
+    const upsertData: Record<string, unknown> = {
+      id: user.id,
+      email: user.email,
       onboarding_complete: true,
       account_type: accountType,
     };
-    if (data.display_name) updateData.username = data.display_name;
-    if (data.business_name) updateData.business_name = data.business_name;
-    if (data.city) updateData.city = data.city;
-    if (data.postcode_area) updateData.postcode_area = data.postcode_area;
-    if (data.bio) updateData.bio = data.bio;
-    if (data.trades) updateData.trades = data.trades;
-    if (data.hourly_rate_from !== undefined) updateData.hourly_rate_from = data.hourly_rate_from;
-    if (data.tax_rate) updateData.tax_rate = data.tax_rate;
+    if (data.display_name) upsertData.username = data.display_name;
+    if (data.business_name) upsertData.business_name = data.business_name;
+    if (data.city) upsertData.city = data.city;
+    if (data.postcode_area) upsertData.postcode_area = data.postcode_area;
+    if (data.bio) upsertData.bio = data.bio;
+    if (data.trades) upsertData.trades = data.trades;
+    if (data.hourly_rate_from !== undefined) upsertData.hourly_rate_from = data.hourly_rate_from;
+    if (data.tax_rate) upsertData.tax_rate = data.tax_rate;
 
     // Set trial for contractor/both accounts
     if (accountType === 'contractor' || accountType === 'both') {
       const now = new Date();
-      updateData.subscription_status = 'free_trial';
-      updateData.trial_started_at = now.toISOString();
-      updateData.trial_ends_at = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      upsertData.subscription_status = 'free_trial';
+      upsertData.trial_started_at = now.toISOString();
+      upsertData.trial_ends_at = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
     } else {
       // customers have no subscription requirement
-      updateData.subscription_status = 'active';
+      upsertData.subscription_status = 'active';
     }
 
     const { error } = await supabase
       .from('user_profiles')
-      .update(updateData)
-      .eq('id', user.id);
+      .upsert(upsertData, { onConflict: 'id' });
 
-    if (!error) {
-      const fresh = await fetchProfile(user.id);
-      if (fresh) setUser(fresh);
+    if (error) {
+      setOperationLoading(false);
+      return { error: error.message };
     }
+
+    const fresh = await fetchProfile(user.id);
+    if (fresh) setUser(fresh);
     setOperationLoading(false);
+    return { error: null };
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
