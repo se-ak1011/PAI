@@ -336,6 +336,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Ensure account_type is valid — never allow null
     const accountType: UserRole = data.account_type || user.account_type || 'contractor';
 
+    // id and email are included so the row is fully seeded when the handle_new_user
+    // trigger hasn't yet run (e.g. first deploy). email mirrors the auth identity and
+    // is safe to include here — onboarding always runs as the same authenticated user.
     const upsertData: Record<string, unknown> = {
       id: user.id,
       email: user.email,
@@ -364,7 +367,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { error } = await supabase
       .from('user_profiles')
-      .upsert(upsertData, { onConflict: 'id' });
+      .upsert(upsertData);
 
     if (error) {
       setOperationLoading(false);
