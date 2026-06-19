@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { getSupabaseClient } from '@/template/core';
+import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { InteractionManager } from 'react-native';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useContext } from 'react';
 import { withTimeout } from '@/utils/asyncTimeout';
@@ -69,15 +70,31 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const [jobPosts, setJobPosts] = useState<JobPost[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const supabase = useMemo(() => {
-    try {
-      return getSupabaseClient();
-    } catch (error) {
-      console.warn('[JobsContext] Supabase client unavailable; skipping startup sync:', error);
-      return null;
-    }
-  }, []);
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const user = auth?.user ?? null;
+
+  useEffect(() => {
+    if (!user) return;
+
+    let canceled = false;
+    const timeoutId = setTimeout(() => {
+      InteractionManager.runAfterInteractions(async () => {
+        if (canceled) return;
+        try {
+          const { getSupabaseClient } = await import('@/template/core');
+          if (canceled) return;
+          setSupabase(getSupabaseClient());
+        } catch (error) {
+          console.warn('[JobsContext] Supabase client unavailable; skipping background sync:', error);
+        }
+      });
+    }, 0);
+
+    return () => {
+      canceled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [user?.id]);
 
   // Always define hooks unconditionally; guard the bodies for the null-supabase case.
   const refreshJobs = useCallback(async () => {
