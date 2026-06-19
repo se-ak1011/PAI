@@ -36,7 +36,7 @@ module.exports = {
     icon: "./assets/images/logo.png",
     scheme: "onspaceapp",
     userInterfaceStyle: "automatic",
-    newArchEnabled: true,
+    newArchEnabled: false,
     extra: {
       eas: {
         projectId: "edb679df-25ed-42e6-87e7-a027c38860c1"
