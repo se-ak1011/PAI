@@ -28,12 +28,17 @@ export function JobCard({ job, onPress }: JobCardProps) {
           <Text style={styles.customer}>{job.customer}</Text>
         </View>
         <View style={styles.right}>
-          <Text style={styles.total}>£{job.total.toLocaleString()}</Text>
+          <Text style={styles.total}>
+            {job.job_type === 'hourly' && job.hourly_rate
+              ? `£${job.hourly_rate}/hr`
+              : `£${job.total.toLocaleString()}`}
+          </Text>
           <PBadge label={STATUS_LABELS[job.status] || job.status} variant={job.status as any} />
         </View>
       </View>
       <View style={styles.meta}>
         <Text style={styles.metaText}>{job.created_at}</Text>
+        {job.job_type === 'hourly' ? <Text style={styles.hourlyBadge}>⏱ HOURLY</Text> : null}
         {job.source_job_post_id ? <Text style={styles.sourceBadge}>PAI Job</Text> : null}
       </View>
     </PCard>
@@ -55,6 +60,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primaryGlow,
     backgroundColor: Colors.primaryDim,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  hourlyBadge: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.info,
+    backgroundColor: Colors.infoDim,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,

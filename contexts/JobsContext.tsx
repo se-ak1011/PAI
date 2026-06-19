@@ -21,6 +21,11 @@ export interface PrivateJob {
   paid_at: string | null;
   created_at: string;
   source_job_post_id: string | null;
+  // Hourly jobs
+  job_type: 'fixed' | 'hourly';
+  hourly_rate: number | null;
+  estimated_hours: number | null;
+  actual_hours: number | null;
 }
 
 export interface JobPost {
@@ -92,6 +97,10 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         ...j,
         materials_items: j.materials_items || [],
         receipts: j.receipts || [],
+        job_type: j.job_type ?? 'fixed',
+        hourly_rate: j.hourly_rate ?? null,
+        estimated_hours: j.estimated_hours ?? null,
+        actual_hours: j.actual_hours ?? null,
       })));
     }
   }, [supabase, user?.id]);
@@ -177,7 +186,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       .select()
       .single();
     if (!error && data) {
-      setPrivateJobs(prev => [{ ...data, materials_items: data.materials_items || [], receipts: data.receipts || [] }, ...prev]);
+      setPrivateJobs(prev => [{ ...data, materials_items: data.materials_items || [], receipts: data.receipts || [], job_type: data.job_type ?? 'fixed', hourly_rate: data.hourly_rate ?? null, estimated_hours: data.estimated_hours ?? null, actual_hours: data.actual_hours ?? null }, ...prev]);
     }
   };
 

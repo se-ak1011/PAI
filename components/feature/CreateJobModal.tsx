@@ -43,6 +43,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
   const [description, setDescription] = useState('');
   const [trade, setTrade] = useState<string>(user?.trades?.[0] ?? TRADE_CATEGORIES[0]);
   const [customer, setCustomer] = useState('');
+  const [jobType, setJobType] = useState<'fixed' | 'hourly'>('fixed');
 
   // Step 1 — AI result
   const [aiResult, setAiResult] = useState<AIQuoteResult | null>(null);
@@ -52,11 +53,18 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
   const [jobTitle, setJobTitle] = useState('');
   const [labourOverride, setLabourOverride] = useState('');
   const [materialsOverride, setMaterialsOverride] = useState('');
+  // Hourly fields
+  const [hourlyRateStr, setHourlyRateStr] = useState('');
+  const [estimatedHoursStr, setEstimatedHoursStr] = useState('');
 
   const [step, setStep] = useState<Step>(0);
   const [saving, setSaving] = useState(false);
 
-  const labourNum = parseFloat(labourOverride) || aiResult?.totalEstimate?.labourTotal || 0;
+  const hourlyRate = parseFloat(hourlyRateStr) || 0;
+  const estimatedHours = parseFloat(estimatedHoursStr) || 0;
+  const labourNum = jobType === 'hourly'
+    ? hourlyRate * estimatedHours
+    : parseFloat(labourOverride) || aiResult?.totalEstimate?.labourTotal || 0;
   const materialsNum = parseFloat(materialsOverride) || aiResult?.totalEstimate?.materialsTotal || 0;
   const vat = Math.round((labourNum + materialsNum) * 0.2 * 100) / 100;
   const total = labourNum + materialsNum + vat;
@@ -66,10 +74,13 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
     setDescription('');
     setCustomer('');
     setTrade(user?.trades?.[0] ?? TRADE_CATEGORIES[0]);
+    setJobType('fixed');
     setAiResult(null);
     setJobTitle('');
     setLabourOverride('');
     setMaterialsOverride('');
+    setHourlyRateStr('');
+    setEstimatedHoursStr('');
   };
 
   const handleClose = () => {
@@ -106,8 +117,18 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
     // Pre-fill title from scope first sentence
     const firstLine = data.scope?.split('.')[0]?.trim();
     setJobTitle(firstLine && firstLine.length < 80 ? firstLine : description.slice(0, 60));
-    setLabourOverride(data.totalEstimate.labourTotal.toFixed(2));
-    setMaterialsOverride(data.totalEstimate.materialsTotal.toFixed(2));
+    if (jobType === 'hourly') {
+      // Pre-fill estimated hours from AI labour days (×8 hrs/day), rate from profile
+      const aiDays = data.labourEstimate?.days ?? 1;
+      setEstimatedHoursStr((aiDays * 8).toFixed(0));
+      if (user?.hourly_rate) {
+        setHourlyRateStr(String(user.hourly_rate));
+      }
+      setMaterialsOverride(data.totalEstimate.materialsTotal.toFixed(2));
+    } else {
+      setLabourOverride(data.totalEstimate.labourTotal.toFixed(2));
+      setMaterialsOverride(data.totalEstimate.materialsTotal.toFixed(2));
+    }
   };
 
   // ── Step 2: Save job ────────────────────────────────────────
@@ -126,6 +147,13 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
         typeof m.estimatedPrice === 'number' && isFinite(m.estimatedPrice)
     );
 
+    // Hourly validation
+    if (jobType === 'hourly' && (hourlyRate <= 0 || estimatedHours <= 0)) {
+      showAlert('Required', 'Please enter a valid hourly rate and estimated hours.');
+      setSaving(false);
+      return;
+    }
+
     setSaving(true);
     await addPrivateJob({
       contractor_id: user.id,
@@ -142,6 +170,10 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
       invoiced_at: null,
       paid_at: null,
       source_job_post_id: null,
+      job_type: jobType,
+      hourly_rate: jobType === 'hourly' ? hourlyRate : null,
+      estimated_hours: jobType === 'hourly' ? estimatedHours : null,
+      actual_hours: null,
     });
     setSaving(false);
     handleClose();
@@ -261,6 +293,33 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
                     </Pressable>
                   ))}
                 </ScrollView>
+              </View>
+
+              {/* Job type toggle */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>JOB TYPE</Text>
+                <View style={styles.jobTypeRow}>
+                  <Pressable
+                    style={[styles.jobTypeBtn, jobType === 'fixed' && styles.jobTypeBtnActive]}
+                    onPress={() => setJobType('fixed')}
+                  >
+                    <MaterialIcons name="receipt-long" size={16} color={jobType === 'fixed' ? Colors.textInverse : Colors.textSecondary} />
+                    <View>
+                      <Text style={[styles.jobTypeBtnLabel, jobType === 'fixed' && styles.jobTypeBtnLabelActive]}>Fixed Price</Text>
+                      <Text style={[styles.jobTypeBtnSub, jobType === 'fixed' && styles.jobTypeBtnSubActive]}>Agreed quote upfront</Text>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.jobTypeBtn, jobType === 'hourly' && styles.jobTypeBtnActive]}
+                    onPress={() => setJobType('hourly')}
+                  >
+                    <MaterialIcons name="schedule" size={16} color={jobType === 'hourly' ? Colors.textInverse : Colors.textSecondary} />
+                    <View>
+                      <Text style={[styles.jobTypeBtnLabel, jobType === 'hourly' && styles.jobTypeBtnLabelActive]}>Hourly Rate</Text>
+                      <Text style={[styles.jobTypeBtnSub, jobType === 'hourly' && styles.jobTypeBtnSubActive]}>Estimate, billed on time</Text>
+                    </View>
+                  </Pressable>
+                </View>
               </View>
 
               {/* Pricing context preview */}
@@ -440,43 +499,104 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
                 />
               </View>
 
-              <View style={styles.twoCol}>
-                <View style={[styles.fieldGroup, { flex: 1 }]}>
-                  <Text style={styles.fieldLabel}>LABOUR (£)</Text>
-                  <TextInput
-                    style={styles.fieldInput}
-                    value={labourOverride}
-                    onChangeText={setLabourOverride}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                  />
+              {jobType === 'hourly' ? (
+                <>
+                  {/* Hourly rate + estimated hours */}
+                  <View style={styles.twoCol}>
+                    <View style={[styles.fieldGroup, { flex: 1 }]}>
+                      <Text style={styles.fieldLabel}>HOURLY RATE (£/HR)</Text>
+                      <TextInput
+                        style={styles.fieldInput}
+                        value={hourlyRateStr}
+                        onChangeText={setHourlyRateStr}
+                        keyboardType="decimal-pad"
+                        placeholder="e.g. 45"
+                        placeholderTextColor={Colors.textMuted}
+                      />
+                    </View>
+                    <View style={[styles.fieldGroup, { flex: 1 }]}>
+                      <Text style={styles.fieldLabel}>EST. HOURS</Text>
+                      <TextInput
+                        style={styles.fieldInput}
+                        value={estimatedHoursStr}
+                        onChangeText={setEstimatedHoursStr}
+                        keyboardType="decimal-pad"
+                        placeholder="e.g. 8"
+                        placeholderTextColor={Colors.textMuted}
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>MATERIALS (£)</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={materialsOverride}
+                      onChangeText={setMaterialsOverride}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  </View>
+                  {/* Hourly estimate note */}
+                  <View style={styles.hourlyNoteBanner}>
+                    <MaterialIcons name="schedule" size={14} color={Colors.info} />
+                    <Text style={styles.hourlyNoteText}>
+                      This is an estimate — the final invoice will be based on actual hours worked. The customer will receive an estimate document, not a fixed quote.
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.twoCol}>
+                  <View style={[styles.fieldGroup, { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>LABOUR (£)</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={labourOverride}
+                      onChangeText={setLabourOverride}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  </View>
+                  <View style={[styles.fieldGroup, { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>MATERIALS (£)</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={materialsOverride}
+                      onChangeText={setMaterialsOverride}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  </View>
                 </View>
-                <View style={[styles.fieldGroup, { flex: 1 }]}>
-                  <Text style={styles.fieldLabel}>MATERIALS (£)</Text>
-                  <TextInput
-                    style={styles.fieldInput}
-                    value={materialsOverride}
-                    onChangeText={setMaterialsOverride}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                  />
-                </View>
-              </View>
+              )}
 
               {/* Summary */}
               <View style={styles.finalSummary}>
-                <View style={styles.grandTotalRow}>
-                  <Text style={styles.grandTotalLabel}>Subtotal</Text>
-                  <Text style={styles.grandTotalVal}>£{(labourNum + materialsNum).toFixed(2)}</Text>
-                </View>
+                {jobType === 'hourly' && hourlyRate > 0 && estimatedHours > 0 ? (
+                  <View style={styles.grandTotalRow}>
+                    <Text style={styles.grandTotalLabel}>Labour est. ({estimatedHours} hrs × £{hourlyRate}/hr)</Text>
+                    <Text style={styles.grandTotalVal}>£{labourNum.toFixed(2)}</Text>
+                  </View>
+                ) : (
+                  <View style={styles.grandTotalRow}>
+                    <Text style={styles.grandTotalLabel}>Subtotal</Text>
+                    <Text style={styles.grandTotalVal}>£{(labourNum + materialsNum).toFixed(2)}</Text>
+                  </View>
+                )}
+                {jobType === 'hourly' && (parseFloat(materialsOverride) || 0) > 0 ? (
+                  <View style={styles.grandTotalRow}>
+                    <Text style={styles.grandTotalLabel}>Materials</Text>
+                    <Text style={styles.grandTotalVal}>£{materialsNum.toFixed(2)}</Text>
+                  </View>
+                ) : null}
                 <View style={styles.grandTotalRow}>
                   <Text style={styles.grandTotalLabel}>VAT (20%)</Text>
                   <Text style={styles.grandTotalVal}>£{vat.toFixed(2)}</Text>
                 </View>
                 <View style={[styles.grandTotalRow, styles.grandTotalFinal]}>
-                  <Text style={styles.grandTotalFinalLabel}>TOTAL</Text>
+                  <Text style={styles.grandTotalFinalLabel}>{jobType === 'hourly' ? 'ESTIMATE TOTAL' : 'TOTAL'}</Text>
                   <Text style={styles.grandTotalFinalVal}>£{total.toFixed(2)}</Text>
                 </View>
               </View>
@@ -693,4 +813,26 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card, borderRadius: Radius.lg,
     borderWidth: 1, borderColor: Colors.border, padding: 16, gap: 8,
   },
+
+  // Job type toggle
+  jobTypeRow: { flexDirection: 'row', gap: 10 },
+  jobTypeBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.card, borderRadius: Radius.md,
+    borderWidth: 1.5, borderColor: Colors.border,
+    padding: 12,
+  },
+  jobTypeBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  jobTypeBtnLabel: { ...Typography.labelMD, color: Colors.textSecondary, fontWeight: '600' },
+  jobTypeBtnLabelActive: { color: Colors.textInverse },
+  jobTypeBtnSub: { ...Typography.labelSM, color: Colors.textMuted },
+  jobTypeBtnSubActive: { color: Colors.textInverse + 'CC' },
+
+  // Hourly note banner
+  hourlyNoteBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: Colors.infoDim, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.info + '44', padding: 12,
+  },
+  hourlyNoteText: { ...Typography.labelSM, color: Colors.info, flex: 1, lineHeight: 18 },
 });

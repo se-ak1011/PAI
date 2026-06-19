@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { PButton, PInput } from '@/components';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { TRADE_CATEGORIES, PLATFORM_PRINCIPLES, SUBSCRIPTION } from '@/constants/config';
+import { TRADE_CATEGORIES, PLATFORM_PRINCIPLES } from '@/constants/config';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -46,7 +46,7 @@ export default function OnboardingScreen() {
       showAlert('Account type missing', 'Please restart setup.');
       return;
     }
-    await completeOnboarding({
+    const { error } = await completeOnboarding({
       account_type: accountType,
       display_name: displayName || undefined,
       business_name: businessName || undefined,
@@ -57,6 +57,10 @@ export default function OnboardingScreen() {
       tax_rate: taxRate,
       onboarding_complete: true,
     });
+    if (error) {
+      showAlert('Setup failed', 'We could not save your profile. Please try again.');
+      return;
+    }
     router.replace('/(tabs)');
   };
 
