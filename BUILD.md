@@ -1,9 +1,9 @@
 # Building & Running PAI
 
-PAI is an Expo (React Native) app. It uses custom native modules, so **Expo Go
-cannot run it** — you need an EAS **development** or **preview** build installed
-on your device. All builds happen in the cloud on your Expo account (no Mac
-required to build).
+PAI is an Expo (React Native) app. The primary native preview path is still an
+EAS **development** or **preview** build installed on your device, but the repo
+also includes an **Expo Go smoke-preview mode** for quick JavaScript/UI checks.
+All cloud builds happen on your Expo account (no Mac required to build).
 
 ## 0. Prerequisites (one time)
 ```bash
@@ -29,20 +29,36 @@ eas env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<your-anon-key>"   
 ```
 (Values are in your local `.env`.)
 
-## 3. Preview it on your iPad (fastest)
+## 3. Quick smoke preview in Expo Go
+
+Use this when you only need to verify JavaScript/UI startup in the stock Expo Go
+app:
+
+```bash
+npm run start:go
+# or, if your phone cannot reach your local machine directly:
+npm run start:go:tunnel
+```
+
+The Expo Go script forces `npx expo start --go` and sets `EXPO_GO=1`, which
+omits the `expo-dev-client` config plugin for that server session. If a screen
+starts using a native library that is not bundled in Expo Go, use the development
+build path below instead.
+
+## 4. Preview it on your iPad with an installable build
 ```bash
 eas device:create                         # register your iPad's UDID (one time, follow the link)
 eas build --profile preview --platform ios
 ```
 When it finishes, open the install link / scan the QR on the iPad to install PAI.
 
-## 4. Live-reload development build (optional)
+## 5. Live-reload development build (optional)
 ```bash
 eas build --profile development --platform ios   # install once on the iPad
 npx expo start --dev-client                       # then reload code instantly
 ```
 
-## 5. Ship to TestFlight (when ready)
+## 6. Ship to TestFlight (when ready)
 Requires an Apple Developer account + an app record in App Store Connect.
 ```bash
 eas build --profile production --platform ios
