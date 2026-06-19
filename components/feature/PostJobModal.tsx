@@ -7,7 +7,7 @@ import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { TRADE_CATEGORIES } from '@/constants/config';
 import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 
 interface PostJobModalProps {

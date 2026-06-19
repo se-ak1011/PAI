@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, useMemo, ReactNode } from 'react';
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 import { AuthContext } from '@/contexts/AuthContext';
 import { withTimeout } from '@/utils/asyncTimeout';
 

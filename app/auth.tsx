@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 
 type Screen = 'login' | 'signup';

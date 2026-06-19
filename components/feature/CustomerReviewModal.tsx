@@ -12,9 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { MaterialIcons } from '@expo/vector-icons';
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 import { useAuth } from '@/hooks/useAuth';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 
 // ── Types ────────────────────────────────────────────────────
 interface CustomerReviewModalProps {

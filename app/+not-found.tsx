@@ -15,7 +15,7 @@ export default function NotFoundScreen() {
         <MaterialIcons name="report-problem" size={72} color={Colors.primary} />
         <Text style={styles.title}>Page not found</Text>
         <Text style={styles.message}>
-          That page doesn't exist or has been moved.
+          That page doesn’t exist or has been moved.
         </Text>
 
         <TouchableOpacity

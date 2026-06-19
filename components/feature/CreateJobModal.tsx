@@ -8,7 +8,7 @@ import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { TRADE_CATEGORIES, PLATFORM_PRINCIPLES } from '@/constants/config';
 import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { generateAIQuote, AIQuoteResult } from '@/services/aiService';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -237,7 +237,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
             <View style={styles.stepContent}>
               <Text style={styles.stepTitle}>Describe the job</Text>
               <Text style={styles.stepSub}>
-                Keep it simple — even "replace kitchen taps in M1" works. AI handles the rest using your rates and preferred shop.
+                Keep it simple — even “replace kitchen taps in M1” works. AI handles the rest using your rates and preferred shop.
               </Text>
 
               {/* Description input */}

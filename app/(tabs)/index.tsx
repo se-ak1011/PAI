@@ -201,7 +201,7 @@ function ContractorDashboard() {
         </View>
         {activeJobs.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyCardText}>No active jobs. Tap "New job" to quote one.</Text>
+            <Text style={styles.emptyCardText}>No active jobs. Tap “New job” to quote one.</Text>
           </View>
         ) : (
           activeJobs.slice(0, 3).map(j => (

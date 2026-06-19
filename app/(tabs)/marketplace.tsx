@@ -11,7 +11,7 @@ import { TRADE_CATEGORIES } from '@/constants/config';
 import { MaterialIcons } from '@expo/vector-icons';
 import { RoleSwitcherBar } from './_layout';
 import { PostJobModal } from '@/components/feature/PostJobModal';
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 
 const ALL_TABS = ['Find Work', 'Tradespeople', 'Trade Network'] as const;
 type Tab = typeof ALL_TABS[number];
