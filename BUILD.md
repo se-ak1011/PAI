@@ -6,6 +6,18 @@ also includes an **Expo Go smoke-preview mode** for quick JavaScript/UI checks.
 All cloud builds happen on your Expo account (no Mac required to build).
 
 ## 0. Prerequisites (one time)
+
+Use Node 20.19.4 or newer. Codespaces sometimes opens on Node 16, which is too
+old for the current Expo CLI and will fail with `Blob is not defined` or
+`EBADENGINE` warnings. If that happens, run:
+
+```bash
+nvm install
+nvm use
+```
+
+Then install the app dependencies:
+
 ```bash
 npm install -g eas-cli       # the EAS command-line tool
 eas login                    # sign in to your Expo account
