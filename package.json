@@ -13,7 +13,9 @@
     "lint": "expo lint",
     "build": "npx expo export --platform web",
     "vercel-build": "npx expo export --platform web",
-    "postinstall": "node -e \"if(!require('fs').existsSync('package-lock.json')) require('child_process').execSync('npm i --package-lock-only',{stdio:'inherit'})\""
+    "postinstall": "node -e \"if(!require('fs').existsSync('package-lock.json')) require('child_process').execSync('npm i --package-lock-only',{stdio:'inherit'})\"",
+    "start:go": "node ./scripts/start-expo-go.js",
+    "start:go:tunnel": "node ./scripts/start-expo-go.js --tunnel"
   },
   "dependencies": {
     "@apollo/client": "^3.4.10",
@@ -141,5 +143,9 @@
     "react-dev-inspector": "^2.0.1",
     "typescript": "~5.8.3"
   },
-  "private": true
+  "private": true,
+  "engines": {
+    "node": ">=20.19.4",
+    "npm": ">=10"
+  }
 }

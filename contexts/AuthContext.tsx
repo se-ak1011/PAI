@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { InteractionManager } from 'react-native';
-import { getSupabaseClient } from '@/template/core';
 import { withTimeout } from '@/utils/asyncTimeout';
+import { deferUntilAfterFirstPaint, getDeferredSupabaseClient, type DeferredSupabaseClient } from '@/utils/deferredSupabase';
 import type { Session } from '@supabase/supabase-js';
 
 export type UserRole = 'contractor' | 'customer' | 'both';
@@ -65,14 +64,6 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const AUTH_STARTUP_TIMEOUT_MS = 6000;
 const PROFILE_SYNC_TIMEOUT_MS = 6000;
 
-function deferUntilAfterFirstPaint(task: () => void) {
-  const timeoutId = setTimeout(() => {
-    InteractionManager.runAfterInteractions(task);
-  }, 0);
-
-  return () => clearTimeout(timeoutId);
-}
-
 function profileFromSession(session: Session): UserProfile {
   const metadata = session.user.user_metadata ?? {};
   const accountType = (metadata.account_type as UserRole) ?? 'contractor';
@@ -105,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [operationLoading, setOperationLoading] = useState(false);
-  const [supabase, setSupabase] = useState<ReturnType<typeof getSupabaseClient> | null>(null);
+  const [supabase, setSupabase] = useState<DeferredSupabaseClient | null>(null);
   const [supabaseUnavailable, setSupabaseUnavailable] = useState(false);
 
   useEffect(() => {
@@ -114,18 +105,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cancelDeferredStartup = deferUntilAfterFirstPaint(() => {
       if (canceled) return;
 
-      try {
-        const client = getSupabaseClient();
-        if (!canceled) {
-          setSupabase(client);
-        }
-      } catch (error) {
-        console.warn('[AuthContext] Supabase client unavailable during background startup:', error);
-        if (!canceled) {
-          setSupabaseUnavailable(true);
-          setLoading(false);
-        }
-      }
+      getDeferredSupabaseClient()
+        .then((client) => {
+          if (!canceled) {
+            setSupabase(client);
+          }
+        })
+        .catch((error) => {
+          console.warn('[AuthContext] Supabase client unavailable during background startup:', error);
+          if (!canceled) {
+            setSupabaseUnavailable(true);
+            setLoading(false);
+          }
+        });
     });
 
     return () => {

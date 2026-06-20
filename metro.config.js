@@ -13,4 +13,16 @@ config.resolver.nodeModulesPaths = [
 // conflicts with Expo's server-side rendering helpers (expo-font/server.js etc.)
 config.resolver.unstable_enablePackageExports = false;
 
+// Avoid evaluating large dependency subgraphs during native startup. This keeps
+// root-mounted providers from pulling Supabase and native storage modules into
+// the first scene creation path.
+config.transformer = {
+  ...config.transformer,
+  getTransformOptions: async () => ({
+    transform: {
+      inlineRequires: true,
+    },
+  }),
+};
+
 module.exports = config;

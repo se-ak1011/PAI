@@ -1,8 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, ReactNode } from 'react';
-import { InteractionManager } from 'react-native';
-import { getSupabaseClient } from '@/template/core';
 import { AuthContext } from '@/contexts/AuthContext';
 import { withTimeout } from '@/utils/asyncTimeout';
+import { deferUntilAfterFirstPaint, getDeferredSupabaseClient, type DeferredSupabaseClient } from '@/utils/deferredSupabase';
 
 export interface ManualIncomeEntry {
   id: string;
@@ -107,26 +106,28 @@ export function TaxPotProvider({ children }: { children: ReactNode }) {
   const [taxRate, setTaxRateState] = useState(30);
   const [loading, setLoading] = useState(false);
 
-  const [supabase, setSupabase] = useState<ReturnType<typeof getSupabaseClient> | null>(null);
+  const [supabase, setSupabase] = useState<DeferredSupabaseClient | null>(null);
 
   useEffect(() => {
     if (!user) return;
 
     let canceled = false;
-    const timeoutId = setTimeout(() => {
-      InteractionManager.runAfterInteractions(() => {
-        if (canceled) return;
-        try {
-          setSupabase(getSupabaseClient());
-        } catch (error) {
+    const cancelDeferredStartup = deferUntilAfterFirstPaint(() => {
+      if (canceled) return;
+      getDeferredSupabaseClient()
+        .then((client) => {
+          if (!canceled) {
+            setSupabase(client);
+          }
+        })
+        .catch((error) => {
           console.warn('[TaxPotContext] Supabase client unavailable; skipping background sync:', error);
-        }
-      });
-    }, 0);
+        });
+    });
 
     return () => {
       canceled = true;
-      clearTimeout(timeoutId);
+      cancelDeferredStartup();
     };
   }, [user?.id]);
 
