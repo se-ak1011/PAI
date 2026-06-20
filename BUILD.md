@@ -52,12 +52,10 @@ npm run start:go
 npm run start:go:tunnel
 ```
 
-The Expo Go script uses the repo's local Expo CLI (`expo/bin/cli`) with
-`start --go` and sets `EXPO_GO=1`, which omits the `expo-dev-client` config
-plugin for that server session. It intentionally does not call `npx expo`, so
-it will not download an incompatible latest Expo CLI on older environments. If
-a screen starts using a native library that is not bundled in Expo Go, use the
-development build path below instead.
+The Expo Go script forces `npx expo start --go` and sets `EXPO_GO=1`, which
+omits the `expo-dev-client` config plugin for that server session. If a screen
+starts using a native library that is not bundled in Expo Go, use the development
+build path below instead.
 
 ## 4. Preview it on your iPad with an installable build
 ```bash

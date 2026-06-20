@@ -1,17 +1,15 @@
 #!/usr/bin/env node
 const { spawn } = require('child_process');
-const path = require('path');
 
-const expoCli = require.resolve('expo/bin/cli');
-const args = [expoCli, 'start', '--go', ...process.argv.slice(2)];
+const args = ['expo', 'start', '--go', ...process.argv.slice(2)];
+const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
-const child = spawn(process.execPath, args, {
+const child = spawn(command, args, {
   stdio: 'inherit',
   env: {
     ...process.env,
     EXPO_GO: '1',
   },
-  cwd: path.resolve(__dirname, '..'),
 });
 
 child.on('exit', (code, signal) => {
