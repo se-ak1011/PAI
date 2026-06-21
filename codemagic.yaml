@@ -111,8 +111,7 @@ workflows:
           export EXPO_NEW_ARCH_ENABLED=0
           xcode-project build-ipa \
             --workspace ios/*.xcworkspace \
-            --scheme PAI \
-            --export-method app-store
+            --scheme PAI
 
     artifacts:
       - build/ios/ipa/*.ipa
