@@ -18,6 +18,43 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.paii.app
+    scripts:
+      - name: Print iOS signing assets detected by Codemagic
+        script: |
+          echo "== Code signing identities (name + SHA-1) =="
+          security find-identity -v -p codesigning || true
+
+          echo
+          echo "== Provisioning profiles available =="
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          if [[ -d "$PROFILE_DIR" ]]; then
+            find "$PROFILE_DIR" -name "*.mobileprovision" -maxdepth 1 | while read -r profile; do
+              echo
+              echo "Profile file: $(basename "$profile")"
+              security cms -D -i "$profile" > /tmp/codemagic_profile.plist
+              /usr/libexec/PlistBuddy -c "Print :Name" /tmp/codemagic_profile.plist || true
+              /usr/libexec/PlistBuddy -c "Print :UUID" /tmp/codemagic_profile.plist || true
+              /usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" /tmp/codemagic_profile.plist || true
+            done
+          else
+            echo "No provisioning profiles directory found at $PROFILE_DIR"
+          fi
+
+      - name: Validate bundle identifier matches Xcode project
+        script: |
+          XCODE_APP_BUNDLE_ID=$(grep -E 'PRODUCT_BUNDLE_IDENTIFIER = ' ios/Runner.xcodeproj/project.pbxproj | grep -v 'RunnerTests' | head -n 1 | sed -E 's/.*= ([^;]+);/\1/')
+          echo "Codemagic ios_signing.bundle_identifier: $IOS_BUNDLE_IDENTIFIER"
+          echo "Xcode Runner PRODUCT_BUNDLE_IDENTIFIER: $XCODE_APP_BUNDLE_ID"
+
+          if [[ -z "$XCODE_APP_BUNDLE_ID" ]]; then
+            echo "Could not read PRODUCT_BUNDLE_IDENTIFIER from ios/Runner.xcodeproj/project.pbxproj"
+            exit 1
+          fi
+
+          if [[ "$XCODE_APP_BUNDLE_ID" != "$IOS_BUNDLE_IDENTIFIER" ]]; then
+            echo "Bundle identifier mismatch. Align codemagic.yaml and Xcode before building."
+            exit 1
+          fi
 
     scripts:
       - name: Install dependencies
