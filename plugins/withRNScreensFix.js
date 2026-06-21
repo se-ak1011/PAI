@@ -13,11 +13,13 @@ const path = require('path');
 // Lines to inject at the start of an existing post_install block
 const INJECT_MARKER = '# PAI pod build settings for Xcode 16 compatibility';
 const INJECT_LINES = `  ${INJECT_MARKER}
+  # Keep pods aligned with app config (ios.deploymentTarget = 15.1).
   legacy_cxx17_pods = %w[RNScreens]
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
       # Keep only known legacy pods on C++17; use C++20 elsewhere for RN 0.79 / Expo 53.
+      # If a third-party pod fails with C++20, add it to legacy_cxx17_pods.
       config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] =
         legacy_cxx17_pods.include?(target.name) ? 'c++17' : 'c++20'
       config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
