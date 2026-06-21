@@ -62,6 +62,7 @@ module.exports = {
     },
     ios: {
       supportsTablet: true,
+      deploymentTarget: "15.1",
       bundleIdentifier: "com.paii.app",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
