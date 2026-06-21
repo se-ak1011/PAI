@@ -1,8 +1,6 @@
 /**
- * Expo config plugin that injects C++ build settings into the generated Podfile.
- * This fixes Xcode 16 pod compile failures by keeping react-native core pods
- * on c++20, expo-modules-core on c++20, and older third-party pods such as
- * react-native-screens on c++17 with libc++.
+ * Expo config plugin that injects Pod build settings into the generated Podfile.
+ * This keeps Pod deployment target and C/C++ standards consistent for Xcode 16.
  *
  * Strategy: if the Podfile already has a `post_install` block (typical for
  * Expo-generated Podfiles), inject our settings at the top of that block.
@@ -13,18 +11,17 @@ const fs = require('fs');
 const path = require('path');
 
 // Lines to inject at the start of an existing post_install block
-const INJECT_MARKER = '# Fix pod C++ standards for Xcode 16 compatibility';
+const INJECT_MARKER = '# PAI pod build settings for Xcode 16 compatibility';
 const INJECT_LINES = `  ${INJECT_MARKER}
+  legacy_cxx17_pods = %w[RNScreens]
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
-      # React-* core pods and ExpoModulesCore require C++20 on RN 0.79 / Expo 53.
-      # Older third-party pods such as RNScreens stay on C++17.
-      if target.name =~ /^React-/ || target.name == 'ExpoModulesCore'
-        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
-      else
-        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
-      end
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+      # Keep only known legacy pods on C++17; use C++20 elsewhere for RN 0.79 / Expo 53.
+      config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] =
+        legacy_cxx17_pods.include?(target.name) ? 'c++17' : 'c++20'
       config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
+      config.build_settings['GCC_C_LANGUAGE_STANDARD'] = 'gnu11'
     end
   end
 `;
