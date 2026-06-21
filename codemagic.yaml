@@ -41,20 +41,20 @@ workflows:
           fi
 
       - name: Validate bundle identifier matches Xcode project
-        script: |
-          XCODE_APP_BUNDLE_ID=$(grep -E 'PRODUCT_BUNDLE_IDENTIFIER = ' ios/Runner.xcodeproj/project.pbxproj | grep -v 'RunnerTests' | head -n 1 | sed -E 's/.*= ([^;]+);/\1/')
-          echo "Codemagic ios_signing.bundle_identifier: $IOS_BUNDLE_IDENTIFIER"
-          echo "Xcode Runner PRODUCT_BUNDLE_IDENTIFIER: $XCODE_APP_BUNDLE_ID"
+  script: |
+    XCODE_APP_BUNDLE_ID=$(grep -E 'PRODUCT_BUNDLE_IDENTIFIER = ' ios/PAI.xcodeproj/project.pbxproj | grep -v 'Tests' | head -n 1 | sed -E 's/.*= ([^;]+);/\1/')
+    echo "Codemagic ios_signing.bundle_identifier: $IOS_BUNDLE_IDENTIFIER"
+    echo "Xcode PAI PRODUCT_BUNDLE_IDENTIFIER: $XCODE_APP_BUNDLE_ID"
 
-          if [[ -z "$XCODE_APP_BUNDLE_ID" ]]; then
-            echo "Could not read PRODUCT_BUNDLE_IDENTIFIER from ios/Runner.xcodeproj/project.pbxproj"
-            exit 1
-          fi
+    if [[ -z "$XCODE_APP_BUNDLE_ID" ]]; then
+      echo "Could not read PRODUCT_BUNDLE_IDENTIFIER from ios/PAI.xcodeproj/project.pbxproj"
+      exit 1
+    fi
 
-          if [[ "$XCODE_APP_BUNDLE_ID" != "$IOS_BUNDLE_IDENTIFIER" ]]; then
-            echo "Bundle identifier mismatch. Align codemagic.yaml and Xcode before building."
-            exit 1
-          fi
+    if [[ "$XCODE_APP_BUNDLE_ID" != "$IOS_BUNDLE_IDENTIFIER" ]]; then
+      echo "Bundle identifier mismatch. Align codemagic.yaml and Xcode before building."
+      exit 1
+    fi
 
       - name: Install dependencies
         script: |
