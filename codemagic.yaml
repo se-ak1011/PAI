@@ -65,6 +65,26 @@ workflows:
         script: |
           npx expo prebuild --platform ios --clean
 
+      - name: Validate App Store Connect secrets
+        script: |
+          export APP_STORE_CONNECT_KEY_IDENTIFIER="${APP_STORE_CONNECT_KEY_IDENTIFIER:-${APP_STORE_CONNECT_KEY_ID:-}}"
+
+          REQUIRED_VARS=(
+            APP_STORE_CONNECT_KEY_IDENTIFIER
+            APP_STORE_CONNECT_ISSUER_ID
+            APP_STORE_CONNECT_PRIVATE_KEY
+            IOS_BUNDLE_IDENTIFIER
+          )
+
+          for VAR_NAME in "${REQUIRED_VARS[@]}"; do
+            if [[ -z "${!VAR_NAME:-}" ]]; then
+              echo "Missing required Codemagic secret: $VAR_NAME"
+              exit 1
+            fi
+          done
+
+          echo "App Store Connect secrets detected."
+          
       - name: Set up code signing
         script: |
           keychain initialize
