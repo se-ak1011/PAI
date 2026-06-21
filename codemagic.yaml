@@ -94,32 +94,6 @@ workflows:
           cd ios
           pod install --repo-update
 
-      - name: Patch Pods
-        script: |
-          cd ios
-          ruby -e "
-          require 'xcodeproj'
-          project = Xcodeproj::Project.open('Pods/Pods.xcodeproj')
-          project.targets.each do |target|
-            target.build_configurations.each do |config|
-              config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
-              # React-* core pods and ExpoModulesCore require C++20 on RN 0.79 / Expo 53.
-              # Older third-party pods such as RNScreens stay on C++17.
-              if target.name =~ /^React-/ || target.name == 'ExpoModulesCore'
-                config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
-              else
-                config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
-              end
-              config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
-              config.build_settings['GCC_C_LANGUAGE_STANDARD'] = 'gnu11'
-              config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
-              config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
-              config.build_settings['CODE_SIGNING_IDENTITY'] = ''
-            end
-          end
-          project.save
-          "
-
       - name: Build IPA
         script: |
           export RCT_NEW_ARCH_ENABLED=0
