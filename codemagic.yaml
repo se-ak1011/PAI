@@ -17,7 +17,7 @@ workflows:
     vars:
       IOS_BUNDLE_IDENTIFIER: com.paii.app
       
-    ios_signing:
+    Ios_signing:
         distribution_type: app_store
         bundle_identifier: com.paii.app
     
