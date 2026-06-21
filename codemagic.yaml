@@ -13,11 +13,9 @@ workflows:
       node: latest
       xcode: 16.3
       cocoapods: default
-    
-    vars:
-      IOS_BUNDLE_IDENTIFIER: com.paii.app
-      
-    Ios_signing:
+      vars:
+        IOS_BUNDLE_IDENTIFIER: com.paii.app
+      Ios_signing:
         distribution_type: app_store
         bundle_identifier: com.paii.app
     
