@@ -124,26 +124,10 @@ workflows:
         script: |
           export RCT_NEW_ARCH_ENABLED=0
           export EXPO_NEW_ARCH_ENABLED=0
-          # Resolve the installed provisioning profile UUID so we can pass it explicitly
-          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
-          PROFILE_UUID=$(
-            for f in "$PROFILE_DIR"/*.mobileprovision; do
-              security cms -D -i "$f" > /tmp/_p.plist 2>/dev/null
-              APP_ID=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" /tmp/_p.plist 2>/dev/null || true)
-              if [[ "$APP_ID" == *"$IOS_BUNDLE_IDENTIFIER"* ]]; then
-                /usr/libexec/PlistBuddy -c "Print :UUID" /tmp/_p.plist 2>/dev/null
-                break
-              fi
-            done
-          )
-          echo "Using provisioning profile UUID: $PROFILE_UUID"
-
           xcode-project build-ipa \
             --workspace ios/*.xcworkspace \
             --scheme PAI \
-            --config Release \
-            --xcarg CODE_SIGN_STYLE=Manual \
-            --xcarg "PROVISIONING_PROFILE=$PROFILE_UUID"
+            --config Release
 
     artifacts:
       - build/ios/ipa/*.ipa
