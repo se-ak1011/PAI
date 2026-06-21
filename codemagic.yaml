@@ -103,9 +103,9 @@ workflows:
           project.targets.each do |target|
             target.build_configurations.each do |config|
               config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-              # All React-* core pods (RN 0.79+) require C++20 (std::ranges, designated initialisers, etc.)
-              # Third-party pods (RNScreens, hermes-engine, Expo*, etc.) stay on c++17
-              if target.name =~ /^React-/
+              # React-* core pods and ExpoModulesCore require C++20 on RN 0.79 / Expo 53.
+              # Older third-party pods such as RNScreens stay on C++17.
+              if target.name =~ /^React-/ || target.name == 'ExpoModulesCore'
                 config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
               else
                 config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
