@@ -90,6 +90,7 @@ workflows:
           keychain initialize
           app-store-connect fetch-signing-files "$IOS_BUNDLE_IDENTIFIER" --type IOS_APP_STORE --create
           keychain add-certificates
+          cd ios
           xcode-project use-profiles
 
       - name: Install iOS pods
