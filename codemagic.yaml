@@ -15,10 +15,6 @@ workflows:
       cocoapods: default
       vars:
         IOS_BUNDLE_IDENTIFIER: com.paii.app
-        
-    ios_signing:
-      distribution_type: app_store
-      bundle_identifier: com.paii.app
       
     scripts:
       - name: Print iOS signing assets detected by Codemagic
@@ -71,11 +67,18 @@ workflows:
 
       - name: Set up code signing
         script: |
+          export APP_STORE_CONNECT_KEY_IDENTIFIER="${APP_STORE_CONNECT_KEY_IDENTIFIER:-${APP_STORE_CONNECT_KEY_ID:-}}"
+
           keychain initialize
-          app-store-connect fetch-signing-files "$IOS_BUNDLE_IDENTIFIER" --type IOS_APP_STORE --create
-          keychain add-certificates
-          cd ios
-          xcode-project use-profiles
+
+          app-store-connect fetch-signing-files "$IOS_BUNDLE_IDENTIFIER" \
+            --type IOS_APP_STORE \
+            --create
+
+         keychain add-certificates
+
+         cd ios
+         xcode-project use-profiles --warn-only
 
       - name: Install iOS pods
         script: |
@@ -114,7 +117,8 @@ workflows:
           export EXPO_NEW_ARCH_ENABLED=0
           xcode-project build-ipa \
             --workspace ios/*.xcworkspace \
-            --scheme PAI
+            --scheme PAI \
+            --export-method app-store
 
     artifacts:
       - build/ios/ipa/*.ipa
