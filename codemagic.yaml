@@ -49,6 +49,8 @@ workflows:
 
       - name: Expo prebuild iOS
         script: |
+          export RCT_NEW_ARCH_ENABLED=0
+          export EXPO_NEW_ARCH_ENABLED=0
           npx expo prebuild --platform ios --clean
 
       - name: Validate App Store Connect secrets
