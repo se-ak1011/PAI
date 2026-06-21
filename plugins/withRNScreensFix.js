@@ -42,7 +42,7 @@ module.exports = function withRNScreensFix(config) {
       // Idempotency guard — skip if already injected
       if (contents.includes(INJECT_MARKER)) return config;
 
-      const existingHook = /^post_install do \|installer\|/m.exec(contents);
+      const existingHook = /^\s*post_install do \|installer\|/m.exec(contents);
       if (existingHook) {
         // Inject our settings right after the opening line of the existing block
         const insertAt = existingHook.index + existingHook[0].length;
@@ -51,7 +51,11 @@ module.exports = function withRNScreensFix(config) {
         contents += STANDALONE_BLOCK;
       }
 
-      fs.writeFileSync(podfilePath, contents);
+      try {
+        fs.writeFileSync(podfilePath, contents);
+      } catch (err) {
+        throw new Error(`[withRNScreensFix] Failed to write Podfile at ${podfilePath}: ${err.message}`);
+      }
       return config;
     },
   ]);
