@@ -16,9 +16,9 @@ const INJECT_MARKER = '# Fix RNScreens / Xcode 16: enforce c++17 + libc++';
 const INJECT_LINES = `  ${INJECT_MARKER}
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
-      # React-performancetimeline and React-perflogger (RN 0.79+) use C++20 features (std::ranges etc.)
-      # All other targets use c++17; c++20 breaks RNSScreenStackHeaderConfig.mm
-      if target.name =~ /performancetimeline|perflogger/i
+      # All React-* core pods (RN 0.79+) require C++20 (std::ranges, designated initialisers, etc.)
+      # Third-party pods (RNScreens, hermes-engine, Expo*, etc.) stay on c++17
+      if target.name =~ /^React-/
         config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
       else
         config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
