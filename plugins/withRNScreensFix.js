@@ -17,7 +17,6 @@ const INJECT_MARKER = '# Fix pod C++ standards for Xcode 16 compatibility';
 const INJECT_LINES = `  ${INJECT_MARKER}
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
-      # All React-* core pods (RN 0.79+) require C++20 (std::ranges, designated initialisers, etc.)
       # React-* core pods and ExpoModulesCore require C++20 on RN 0.79 / Expo 53.
       # Older third-party pods such as RNScreens stay on C++17.
       if target.name =~ /^React-/ || target.name == 'ExpoModulesCore'
