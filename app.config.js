@@ -34,7 +34,8 @@ const plugins = [
       backgroundColor: '#12171C'
     }
   ],
-  'expo-web-browser'
+  'expo-web-browser',
+  './plugins/withRNScreensFix',
 ];
 
 console.log('[app.config.js] Loading env vars:');
