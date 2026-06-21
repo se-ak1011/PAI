@@ -69,10 +69,22 @@ workflows:
         script: |
           export APP_STORE_CONNECT_KEY_IDENTIFIER="${APP_STORE_CONNECT_KEY_IDENTIFIER:-${APP_STORE_CONNECT_KEY_ID:-}}"
           keychain initialize
-          app-store-connect fetch-signing-files "$IOS_BUNDLE_IDENTIFIER" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "$IOS_BUNDLE_IDENTIFIER" \
+            --type IOS_APP_STORE \
+            --create \
+            --certificate-key-password "${CERTIFICATE_PRIVATE_KEY_PASSWORD:-}" || true
           keychain add-certificates
+
+          echo "== Certificates in keychain after setup =="
+          security find-identity -v -p codesigning || true
+
+          echo "== Provisioning profiles installed =="
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          ls -1 "$PROFILE_DIR" 2>/dev/null || echo "No profiles directory found"
+
           cd ios
-          xcode-project use-profiles --warn-only
+          # Apply profiles — without --warn-only so the build fails loudly if no profile is found
+          xcode-project use-profiles
 
       - name: Install iOS pods
         script: |
@@ -109,9 +121,26 @@ workflows:
         script: |
           export RCT_NEW_ARCH_ENABLED=0
           export EXPO_NEW_ARCH_ENABLED=0
+          # Resolve the installed provisioning profile UUID so we can pass it explicitly
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          PROFILE_UUID=$(
+            for f in "$PROFILE_DIR"/*.mobileprovision; do
+              security cms -D -i "$f" > /tmp/_p.plist 2>/dev/null
+              APP_ID=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" /tmp/_p.plist 2>/dev/null || true)
+              if [[ "$APP_ID" == *"$IOS_BUNDLE_IDENTIFIER"* ]]; then
+                /usr/libexec/PlistBuddy -c "Print :UUID" /tmp/_p.plist 2>/dev/null
+                break
+              fi
+            done
+          )
+          echo "Using provisioning profile UUID: $PROFILE_UUID"
+
           xcode-project build-ipa \
             --workspace ios/*.xcworkspace \
-            --scheme PAI
+            --scheme PAI \
+            --config Release \
+            --xcarg CODE_SIGN_STYLE=Manual \
+            --xcarg "PROVISIONING_PROFILE=$PROFILE_UUID"
 
     artifacts:
       - build/ios/ipa/*.ipa
