@@ -127,6 +127,24 @@ workflows:
           end
           project.save
           "
+        - name: Patch React Native C++ build settings
+        script: |
+          cd ios
+          ruby -e "
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('Pods/Pods.xcodeproj')
+          project.targets.each do |target|
+            target.build_configurations.each do |config|
+              config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+              config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
+              config.build_settings['GCC_C_LANGUAGE_STANDARD'] = 'gnu11'
+              config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+              config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
+              config.build_settings['CODE_SIGNING_IDENTITY'] = ''
+            end
+          end
+          project.save
+          "  
       - name: Build IPA
         script: |
           xcode-project build-ipa \
