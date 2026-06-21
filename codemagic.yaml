@@ -87,9 +87,9 @@ workflows:
           project.targets.each do |target|
             target.build_configurations.each do |config|
               config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-              # React-performancetimeline (RN 0.79+) uses C++20 features (std::ranges etc.)
-              # All other targets use c++17; c++20 breaks RNSScreenStackHeaderConfig.mm
-              if target.name =~ /performancetimeline/i
+              # All React-* core pods (RN 0.79+) require C++20 (std::ranges, designated initialisers, etc.)
+              # Third-party pods (RNScreens, hermes-engine, Expo*, etc.) stay on c++17
+              if target.name =~ /^React-/
                 config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
               else
                 config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
