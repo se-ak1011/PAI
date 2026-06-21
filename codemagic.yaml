@@ -13,8 +13,11 @@ workflows:
       node: latest
       xcode: 16.3
       cocoapods: default
-      vars:
-        IOS_BUNDLE_IDENTIFIER: com.paii.app
+    vars:
+      IOS_BUNDLE_IDENTIFIER: com.paii.app
+      RCT_NEW_ARCH_ENABLED: "0"
+      EXPO_NEW_ARCH_ENABLED: "0"
+        
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.paii.app
