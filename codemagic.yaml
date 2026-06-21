@@ -102,7 +102,7 @@ workflows:
           project = Xcodeproj::Project.open('Pods/Pods.xcodeproj')
           project.targets.each do |target|
             target.build_configurations.each do |config|
-              config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+              config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
               # React-* core pods and ExpoModulesCore require C++20 on RN 0.79 / Expo 53.
               # Older third-party pods such as RNScreens stay on C++17.
               if target.name =~ /^React-/ || target.name == 'ExpoModulesCore'
