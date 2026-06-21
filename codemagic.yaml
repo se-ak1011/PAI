@@ -56,7 +56,6 @@ workflows:
             exit 1
           fi
 
-        scripts:
       - name: Install dependencies
         script: |
           npm install
