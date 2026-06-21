@@ -13,12 +13,14 @@ workflows:
       node: latest
       xcode: 16.3
       cocoapods: default
+    
     vars:
       IOS_BUNDLE_IDENTIFIER: com.paii.app
       
     ios_signing:
         distribution_type: app_store
         bundle_identifier: com.paii.app
+    
     scripts:
       - name: Print iOS signing assets detected by Codemagic
         script: |
@@ -107,7 +109,7 @@ workflows:
           project.save
           "
 
-        - name: Build IPA
+      - name: Build IPA
         script: |
           export RCT_NEW_ARCH_ENABLED=0
           export EXPO_NEW_ARCH_ENABLED=0
