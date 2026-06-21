@@ -97,6 +97,17 @@ workflows:
         script: |
           cd ios
           pod install --repo-update
+
+          ruby -e "
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('Pods/Pods.xcodeproj')
+          project.targets.each do |target|
+            target.build_configurations.each do |config|
+              config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+            end
+          end
+          project.save
+          "
           
       - name: Disable signing for Pods
         script: |
