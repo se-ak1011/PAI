@@ -1,0 +1,52 @@
+workflows:
+  expo-ios:
+    name: Expo iOS
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: codemagicFlutter
+
+    environment:
+      groups:
+        - Ios_signing
+      node: latest
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: com.paii.app
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+
+      - name: Expo prebuild iOS
+        script: |
+          npx expo prebuild --platform ios --clean
+
+      - name: Install iOS pods
+        script: |
+          cd ios
+          pod install --repo-update
+
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace ios/*.xcworkspace \
+            --scheme PAI
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
