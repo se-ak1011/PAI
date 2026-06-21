@@ -56,7 +56,7 @@ workflows:
             exit 1
           fi
 
-    scripts:
+        scripts:
       - name: Install dependencies
         script: |
           npm install
@@ -68,23 +68,20 @@ workflows:
       - name: Validate App Store Connect secrets
         script: |
           export APP_STORE_CONNECT_KEY_IDENTIFIER="${APP_STORE_CONNECT_KEY_IDENTIFIER:-${APP_STORE_CONNECT_KEY_ID:-}}"
-
           REQUIRED_VARS=(
             APP_STORE_CONNECT_KEY_IDENTIFIER
             APP_STORE_CONNECT_ISSUER_ID
             APP_STORE_CONNECT_PRIVATE_KEY
             IOS_BUNDLE_IDENTIFIER
           )
-
           for VAR_NAME in "${REQUIRED_VARS[@]}"; do
             if [[ -z "${!VAR_NAME:-}" ]]; then
               echo "Missing required Codemagic secret: $VAR_NAME"
               exit 1
             fi
           done
-
           echo "App Store Connect secrets detected."
-          
+
       - name: Set up code signing
         script: |
           keychain initialize
@@ -98,36 +95,7 @@ workflows:
           cd ios
           pod install --repo-update
 
-          ruby -e "
-          require 'xcodeproj'
-          project = Xcodeproj::Project.open('Pods/Pods.xcodeproj')
-          project.targets.each do |target|
-            target.build_configurations.each do |config|
-              config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-              config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
-              config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
-            end
-          end
-          project.save
-          "
-          
-      - name: Disable signing for Pods
-        script: |
-          cd ios
-          ruby -e "
-          require 'xcodeproj'
-          project_path = 'Pods/Pods.xcodeproj'
-          project = Xcodeproj::Project.open(project_path)
-          project.targets.each do |target|
-            target.build_configurations.each do |config|
-              config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
-              config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
-              config.build_settings['CODE_SIGNING_IDENTITY'] = ''
-            end
-          end
-          project.save
-          "
-        - name: Patch React Native C++ build settings
+      - name: Patch Pods
         script: |
           cd ios
           ruby -e "
@@ -144,7 +112,8 @@ workflows:
             end
           end
           project.save
-          "  
+          "
+
       - name: Build IPA
         script: |
           xcode-project build-ipa \
