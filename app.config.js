@@ -47,7 +47,7 @@ module.exports = {
     name: "PAI",
     slug: "pai",
     owner: "drained-store",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     icon: "./assets/images/logo.png",
     scheme: "onspaceapp",
