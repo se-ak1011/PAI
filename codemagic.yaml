@@ -15,9 +15,11 @@ workflows:
       cocoapods: default
       vars:
         IOS_BUNDLE_IDENTIFIER: com.paii.app
+        
     ios_signing:
       distribution_type: app_store
       bundle_identifier: com.paii.app
+      
     scripts:
       - name: Print iOS signing assets detected by Codemagic
         script: |
