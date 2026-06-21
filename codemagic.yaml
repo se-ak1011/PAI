@@ -8,6 +8,9 @@ workflows:
       app_store_connect: codemagicFlutter
 
     environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.paii.app
       groups:
         - Ios_signing
       node: latest
