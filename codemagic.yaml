@@ -68,17 +68,11 @@ workflows:
       - name: Set up code signing
         script: |
           export APP_STORE_CONNECT_KEY_IDENTIFIER="${APP_STORE_CONNECT_KEY_IDENTIFIER:-${APP_STORE_CONNECT_KEY_ID:-}}"
-
           keychain initialize
-
-          app-store-connect fetch-signing-files "$IOS_BUNDLE_IDENTIFIER" \
-            --type IOS_APP_STORE \
-            --create
-
-         keychain add-certificates
-
-         cd ios
-         xcode-project use-profiles --warn-only
+          app-store-connect fetch-signing-files "$IOS_BUNDLE_IDENTIFIER" --type IOS_APP_STORE --create
+          keychain add-certificates
+          cd ios
+          xcode-project use-profiles --warn-only
 
       - name: Install iOS pods
         script: |
