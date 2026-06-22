@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { PButton, PInput } from '@/components';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { TRADE_CATEGORIES, PLATFORM_PRINCIPLES } from '@/constants/config';
+import { TRADE_CATEGORIES, PLATFORM_PRINCIPLES, SUBSCRIPTION } from '@/constants/config';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template/ui';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -22,9 +22,9 @@ export default function OnboardingScreen() {
   const isContractor = accountType === 'contractor' || accountType === 'both';
 
   // Steps depend on role:
-  // contractor/both: Welcome → Profile → Trades → TaxRate → Done (4 steps, indices 0-3)
-  // customer: Welcome → Profile → Done (3 steps, indices 0-2, skipping trades/tax)
-  const STEPS = isContractor ? 4 : 3;
+  // contractor/both: Welcome → Profile → Trades → TaxRate → Trial (5 steps, indices 0-4)
+  // customer: Welcome → Profile → Done (3 steps, indices 0-2, skipping trades/tax/trial)
+  const STEPS = isContractor ? 5 : 3;
 
   const [displayName, setDisplayName] = useState(user?.display_name || '');
   const [businessName, setBusinessName] = useState('');
@@ -212,8 +212,46 @@ export default function OnboardingScreen() {
       );
     }
 
-    // Final step (step 2 for customer, step 4 for contractor — shouldn't reach here normally)
-    // This is the "all set" summary shown right before handleFinish
+    if (step === 4 && isContractor) {
+      return (
+        <View style={styles.stepContent}>
+          <Text style={styles.stepTitle}>Start your free trial</Text>
+          <Text style={styles.stepSubtitle}>
+            Try every PAI contractor tool free for {SUBSCRIPTION.TRIAL_DAYS} days. No charge today.
+          </Text>
+
+          {/* Price card */}
+          <View style={styles.priceCard}>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceBig}>£{SUBSCRIPTION.MONTHLY_FEE_GBP}</Text>
+              <Text style={styles.pricePer}>/month</Text>
+            </View>
+            <Text style={styles.priceAfter}>after your {SUBSCRIPTION.TRIAL_DAYS}-day free trial</Text>
+            <View style={styles.principleCard}>
+              <MaterialIcons name="verified" size={16} color={Colors.primaryGlow} />
+              <Text style={styles.principleText}>{PLATFORM_PRINCIPLES.NO_COMMISSION}</Text>
+            </View>
+          </View>
+
+          {/* What's included */}
+          <View style={styles.featureList}>
+            {SUBSCRIPTION.CONTRACTOR_TOOLS.map(f => (
+              <View key={f} style={styles.featureItem}>
+                <MaterialIcons name="check-circle" size={18} color={Colors.success} />
+                <Text style={styles.featureText}>{f}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={styles.trialFinePrint}>
+            No charge for {SUBSCRIPTION.TRIAL_DAYS} days. Cancel anytime before your trial ends
+            and you won't be charged.
+          </Text>
+        </View>
+      );
+    }
+
+    // Final step (step 2 for customer — the "all set" summary shown before handleFinish)
     return (
       <View style={styles.stepContent}>
         <Text style={styles.brandTitle}>You are all set.</Text>
@@ -271,7 +309,7 @@ export default function OnboardingScreen() {
           </Pressable>
         ) : null}
         <PButton
-          label={isLastStep ? 'Get Started' : 'Continue'}
+          label={isLastStep ? (isContractor ? 'Start Free Trial' : 'Get Started') : 'Continue'}
           onPress={isLastStep ? handleFinish : () => setStep(s => s + 1)}
           disabled={!canProgress || operationLoading}
           loading={operationLoading && isLastStep}
@@ -324,6 +362,15 @@ const styles = StyleSheet.create({
   featureList: { gap: 14 },
   featureItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   featureText: { ...Typography.bodyMD },
+  priceCard: {
+    backgroundColor: Colors.card, borderRadius: Radius.lg, padding: 20,
+    borderWidth: 1, borderColor: Colors.primary, gap: 10,
+  },
+  priceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  priceBig: { ...Typography.brandLG, color: Colors.textPrimary },
+  pricePer: { ...Typography.bodyMD, color: Colors.textSecondary, marginBottom: 6 },
+  priceAfter: { ...Typography.labelMD, color: Colors.textSecondary },
+  trialFinePrint: { ...Typography.labelSM, color: Colors.textMuted, lineHeight: 18 },
   summaryCard: {
     backgroundColor: Colors.card, borderRadius: Radius.lg, padding: 20,
     borderWidth: 1, borderColor: Colors.primary, gap: 6,
