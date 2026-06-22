@@ -7,6 +7,7 @@ import { AlertProvider } from '@/template/ui';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { JobsProvider } from '@/contexts/JobsContext';
 import { TaxPotProvider } from '@/contexts/TaxPotContext';
+import { PortfolioProvider } from '@/contexts/PortfolioContext';
 import { RoleProvider } from '@/contexts/RoleContext';
 
 const SPLASH_SCREEN_TIMEOUT_MS = 8000;
@@ -51,6 +52,7 @@ export default function RootLayout() {
             <RoleProvider>
               <JobsProvider>
                 <TaxPotProvider>
+                  <PortfolioProvider>
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="index" />
                     <Stack.Screen name="auth" />
@@ -63,6 +65,7 @@ export default function RootLayout() {
                     <Stack.Screen name="admin-disputes" options={{ headerShown: false }} />
                     <Stack.Screen name="invoice" options={{ headerShown: false }} />
                   </Stack>
+                  </PortfolioProvider>
                 </TaxPotProvider>
               </JobsProvider>
             </RoleProvider>
