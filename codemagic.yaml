@@ -18,7 +18,9 @@ workflows:
       cocoapods: default
       vars:
         IOS_BUNDLE_IDENTIFIER: com.paii.app
-      
+        # SDK 54 / RN 0.81 default. Reanimated 4 requires the New Architecture.
+        RCT_NEW_ARCH_ENABLED: "1"
+
     scripts:
       - name: Print iOS signing assets detected by Codemagic
         script: |
@@ -47,8 +49,6 @@ workflows:
 
       - name: Expo prebuild iOS
         script: |
-          export RCT_NEW_ARCH_ENABLED=0
-          export EXPO_NEW_ARCH_ENABLED=0
           npx expo prebuild --platform ios --clean
 
       - name: Validate App Store Connect secrets
@@ -96,8 +96,6 @@ workflows:
 
       - name: Build IPA
         script: |
-          export RCT_NEW_ARCH_ENABLED=0
-          export EXPO_NEW_ARCH_ENABLED=0
           xcode-project build-ipa \
             --workspace ios/*.xcworkspace \
             --scheme PAI \

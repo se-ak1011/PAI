@@ -35,6 +35,15 @@ const plugins = [
     }
   ],
   'expo-web-browser',
+  // Config plugins required by their packages under SDK 54 (expo install --fix).
+  '@react-native-community/datetimepicker',
+  'expo-asset',
+  'expo-font',
+  'expo-localization',
+  'expo-mail-composer',
+  'expo-secure-store',
+  'expo-sqlite',
+  'expo-video',
   './plugins/withRNScreensFix',
 ];
 
@@ -52,7 +61,7 @@ module.exports = {
     icon: "./assets/images/logo.png",
     scheme: "onspaceapp",
     userInterfaceStyle: "automatic",
-    newArchEnabled: false,
+    newArchEnabled: true,
     extra: {
       eas: {
         projectId: "edb679df-25ed-42e6-87e7-a027c38860c1"
