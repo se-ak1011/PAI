@@ -42,7 +42,10 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
 
   // Step 0 — describe
   const [description, setDescription] = useState('');
-  const [trade, setTrade] = useState<string>(user?.trades?.[0] ?? TRADE_CATEGORIES[0]);
+  // Multiple trades — a job can span trades (e.g. painting + flooring + tiling).
+  const [trades, setTrades] = useState<string[]>(user?.trades?.[0] ? [user.trades[0]] : [TRADE_CATEGORIES[0]]);
+  const toggleTrade = (t: string) =>
+    setTrades(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   const [customer, setCustomer] = useState('');
   const [jobType, setJobType] = useState<'fixed' | 'hourly'>('fixed');
 
@@ -76,7 +79,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
     setStep(0);
     setDescription('');
     setCustomer('');
-    setTrade(user?.trades?.[0] ?? TRADE_CATEGORIES[0]);
+    setTrades(user?.trades?.[0] ? [user.trades[0]] : [TRADE_CATEGORIES[0]]);
     setJobType('fixed');
     setAiResult(null);
     setManualMode(false);
@@ -123,7 +126,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
     const { data, error } = await generateAIQuote({
       jobTitle: description.slice(0, 80),
       jobDescription: description,
-      trade,
+      trade: trades.join(', ') || undefined,
       city: user?.city,
       dayRate: user?.hourly_rate_from ?? undefined,
       hourlyRate: (user as any)?.hourly_rate ?? undefined,
@@ -308,17 +311,17 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
                 />
               </View>
 
-              {/* Trade selector */}
+              {/* Trade selector (multi-select — a job can span trades) */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>TRADE</Text>
+                <Text style={styles.fieldLabel}>TRADE(S) — SELECT ALL THAT APPLY</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tradeRow}>
                   {TRADE_CATEGORIES.map(t => (
                     <Pressable
                       key={t}
-                      style={[styles.tradeChip, trade === t && styles.tradeChipActive]}
-                      onPress={() => setTrade(t)}
+                      style={[styles.tradeChip, trades.includes(t) && styles.tradeChipActive]}
+                      onPress={() => toggleTrade(t)}
                     >
-                      <Text style={[styles.tradeChipText, trade === t && styles.tradeChipTextActive]}>{t}</Text>
+                      <Text style={[styles.tradeChipText, trades.includes(t) && styles.tradeChipTextActive]}>{t}</Text>
                     </Pressable>
                   ))}
                 </ScrollView>
