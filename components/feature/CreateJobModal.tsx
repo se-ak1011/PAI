@@ -59,6 +59,8 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
 
   const [step, setStep] = useState<Step>(0);
   const [saving, setSaving] = useState(false);
+  // Manual mode: skip the AI quote and enter job details by hand.
+  const [manualMode, setManualMode] = useState(false);
 
   const hourlyRate = parseFloat(hourlyRateStr) || 0;
   const estimatedHours = parseFloat(estimatedHoursStr) || 0;
@@ -76,6 +78,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
     setTrade(user?.trades?.[0] ?? TRADE_CATEGORIES[0]);
     setJobType('fixed');
     setAiResult(null);
+    setManualMode(false);
     setJobTitle('');
     setLabourOverride('');
     setMaterialsOverride('');
@@ -88,9 +91,31 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
     onClose();
   };
 
+  // ── Skip AI: jump straight to the manual Confirm step ───────
+  const handleManualEntry = () => {
+    setManualMode(true);
+    setAiResult(null);
+    if (!jobTitle && description.trim()) {
+      setJobTitle(description.trim().slice(0, 60));
+    }
+    setStep(2);
+  };
+
+  // Back button: manual mode skips the AI Review step (1 → 0).
+  const handleBack = () => {
+    if (step === 0) return handleClose();
+    if (manualMode) return setStep(0);
+    setStep((step - 1) as Step);
+  };
+
+  // Step bar adapts: AI flow has 3 steps, manual flow has 2.
+  const visibleSteps = manualMode ? (['Describe', 'Confirm'] as const) : STEPS;
+  const currentIndex = manualMode ? (step === 0 ? 0 : 1) : step;
+
   // ── Step 0 → 1: Run AI ──────────────────────────────────────
   const handleRunAI = async () => {
     if (!description.trim()) return;
+    setManualMode(false);
     setAiLoading(true);
     setStep(1);
 
@@ -190,7 +215,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
         {/* Header */}
         <View style={styles.header}>
           <Pressable
-            onPress={step > 0 && !aiLoading ? () => setStep((step - 1) as Step) : handleClose}
+            onPress={aiLoading ? undefined : handleBack}
             hitSlop={8}
             style={styles.backBtn}
           >
@@ -206,22 +231,22 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
 
         {/* Step progress */}
         <View style={styles.stepBar}>
-          {STEPS.map((label, i) => (
+          {visibleSteps.map((label, i) => (
             <View key={label} style={styles.stepItem}>
               <View style={[
                 styles.stepDot,
-                i <= step && styles.stepDotActive,
-                i === step && styles.stepDotCurrent,
+                i <= currentIndex && styles.stepDotActive,
+                i === currentIndex && styles.stepDotCurrent,
               ]}>
-                {i < step ? (
+                {i < currentIndex ? (
                   <MaterialIcons name="check" size={12} color={Colors.textInverse} />
                 ) : (
-                  <Text style={[styles.stepNum, i <= step && styles.stepNumActive]}>{i + 1}</Text>
+                  <Text style={[styles.stepNum, i <= currentIndex && styles.stepNumActive]}>{i + 1}</Text>
                 )}
               </View>
-              <Text style={[styles.stepLabel, i === step && styles.stepLabelActive]}>{label}</Text>
-              {i < STEPS.length - 1 ? (
-                <View style={[styles.stepLine, i < step && styles.stepLineActive]} />
+              <Text style={[styles.stepLabel, i === currentIndex && styles.stepLabelActive]}>{label}</Text>
+              {i < visibleSteps.length - 1 ? (
+                <View style={[styles.stepLine, i < currentIndex && styles.stepLineActive]} />
               ) : null}
             </View>
           ))}
@@ -367,6 +392,12 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
                 <MaterialIcons name="auto-awesome" size={18} color={Colors.textInverse} />
                 <Text style={styles.generateBtnText}>Generate AI Quote</Text>
               </Pressable>
+
+              {/* Manual path — never force AI on the user */}
+              <Pressable style={styles.manualBtn} onPress={handleManualEntry}>
+                <MaterialIcons name="edit" size={16} color={Colors.textSecondary} />
+                <Text style={styles.manualBtnText}>Skip AI — enter details manually</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -474,8 +505,10 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
           {/* ── STEP 2: Confirm & Save ───────────────────── */}
           {step === 2 ? (
             <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Confirm job</Text>
-              <Text style={styles.stepSub}>Review and adjust before saving.</Text>
+              <Text style={styles.stepTitle}>{manualMode ? 'Job details' : 'Confirm job'}</Text>
+              <Text style={styles.stepSub}>
+                {manualMode ? 'Enter the details and save.' : 'Review and adjust before saving.'}
+              </Text>
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>JOB TITLE</Text>
@@ -731,6 +764,12 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   regenerateBtnText: { ...Typography.labelMD, color: Colors.textSecondary },
+  manualBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 50, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card,
+  },
+  manualBtnText: { ...Typography.labelMD, color: Colors.textSecondary },
 
   // AI loading
   aiLoadingBlock: { alignItems: 'center', paddingVertical: 60, gap: 18 },
