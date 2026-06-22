@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import Constants from 'expo-constants';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { useReliability } from '@/hooks/useReliability';
@@ -524,7 +525,7 @@ function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => 
             ))}
           </View>
 
-          <Text style={settStyles.version}>PAI v1.0.0 · {user?.id?.slice(0, 8)}</Text>
+          <Text style={settStyles.version}>PAI v{Constants.expoConfig?.version ?? '?'} · {user?.id?.slice(0, 8)}</Text>
 
           <Pressable style={settStyles.signOutBtn} onPress={handleLogout}>
             <MaterialIcons name="logout" size={18} color={Colors.error} />

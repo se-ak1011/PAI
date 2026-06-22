@@ -47,6 +47,13 @@ workflows:
         script: |
           npm install
 
+      - name: Set unique build number
+        script: |
+          # Unix timestamp => always higher than the last upload, so App Store
+          # Connect never rejects a build for a duplicate version. Pinned here so
+          # every step in this build sees the same value (read by app.config.js).
+          echo "PAI_BUILD_NUMBER=$(date +%s)" >> $CM_ENV
+
       - name: Expo prebuild iOS
         script: |
           npx expo prebuild --platform ios --clean

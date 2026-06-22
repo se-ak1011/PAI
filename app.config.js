@@ -22,6 +22,13 @@ if (fs.existsSync(envPath)) {
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const isExpoGo = process.env.EXPO_GO === '1';
+
+// Auto-incrementing build number: unique + always increasing, so TestFlight / Play
+// uploads never collide again. CI pins PAI_BUILD_NUMBER once per build (set in
+// codemagic.yaml); locally it falls back to the current Unix timestamp.
+const buildNumber = process.env.PAI_BUILD_NUMBER
+  ? Number(process.env.PAI_BUILD_NUMBER)
+  : Math.floor(Date.now() / 1000);
 const plugins = [
   ...(isExpoGo ? [] : ['expo-dev-client']),
   'expo-router',
@@ -56,7 +63,7 @@ module.exports = {
     name: "PAI",
     slug: "pai",
     owner: "drained-store",
-    version: "1.0.1",
+    version: "1.0.2",
     orientation: "portrait",
     icon: "./assets/images/logo.png",
     scheme: "onspaceapp",
@@ -74,6 +81,7 @@ module.exports = {
       supportsTablet: true,
       deploymentTarget: "15.1",
       bundleIdentifier: "com.paii.app",
+      buildNumber: String(buildNumber),
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSCalendarsUsageDescription: "This app needs access to your calendar to manage availability and schedule events.",
@@ -93,6 +101,7 @@ module.exports = {
     },
     android: {
       package: "com.paii.app",
+      versionCode: buildNumber,
       adaptiveIcon: {
         foregroundImage: "./assets/images/logo.png",
         backgroundColor: "#12171C"
