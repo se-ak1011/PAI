@@ -40,5 +40,12 @@ export async function generateAIQuote(params: {
     return { data: null, error: errorMessage };
   }
 
+  // Some supabase-js versions don't flag non-2xx responses as `error`; the
+  // function still returns its real reason in the body as `{ error }`. Surface
+  // it instead of silently falling back to a generic "check your connection".
+  if (data?.error) {
+    return { data: null, error: String(data.error) };
+  }
+
   return { data: data?.data || null, error: null };
 }
