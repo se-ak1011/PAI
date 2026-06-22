@@ -15,12 +15,13 @@ const path = require('path');
 const INJECT_MARKER = '# PAI pod build settings for Xcode 16 compatibility';
 const INJECT_LINES = `  ${INJECT_MARKER}
   # Keep pods aligned with app config (ios.deploymentTarget).
-  legacy_cxx17_pods = %w[RNScreens]
+  # SDK 54 / RN 0.81 with the New Architecture needs C++20 across all pods; do
+  # NOT force any pod down to C++17 (that breaks Fabric/new-arch headers). Add a
+  # pod here only if it genuinely fails to compile with C++20.
+  legacy_cxx17_pods = %w[]
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '__IOS_DEPLOYMENT_TARGET__'
-      # Keep only known legacy pods on C++17; use C++20 elsewhere for RN 0.79 / Expo 53.
-      # If a third-party pod fails with C++20, add it to legacy_cxx17_pods.
       config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] =
         legacy_cxx17_pods.include?(target.name) ? 'c++17' : 'c++20'
       config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
