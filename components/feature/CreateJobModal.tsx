@@ -47,6 +47,9 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
   const toggleTrade = (t: string) =>
     setTrades(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   const [customer, setCustomer] = useState('');
+  // Job location — the job isn't always where the contractor is based. Pre-filled
+  // with their base city as a hint, but editable per job (and used verbatim by AI).
+  const [location, setLocation] = useState(user?.city ?? '');
   const [jobType, setJobType] = useState<'fixed' | 'hourly'>('fixed');
 
   // Step 1 — AI result
@@ -79,6 +82,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
     setStep(0);
     setDescription('');
     setCustomer('');
+    setLocation(user?.city ?? '');
     setTrades(user?.trades?.[0] ? [user.trades[0]] : [TRADE_CATEGORIES[0]]);
     setJobType('fixed');
     setAiResult(null);
@@ -127,7 +131,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
       jobTitle: description.slice(0, 80),
       jobDescription: description,
       trade: trades.join(', ') || undefined,
-      city: user?.city,
+      city: location.trim() || undefined,
       dayRate: user?.hourly_rate_from ?? undefined,
       hourlyRate: (user as any)?.hourly_rate ?? undefined,
       preferredShop: (user as any)?.preferred_shop ?? undefined,
@@ -307,6 +311,18 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
                   value={customer}
                   onChangeText={setCustomer}
                   placeholder="Customer name"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              {/* Job location */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>JOB LOCATION (optional)</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  value={location}
+                  onChangeText={setLocation}
+                  placeholder="e.g. Bude, EX23 — where the job is"
                   placeholderTextColor={Colors.textMuted}
                 />
               </View>

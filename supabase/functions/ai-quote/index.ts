@@ -39,11 +39,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are PAI, an expert AI assistant for UK tradespeople. 
-You analyse job descriptions and generate professional scopes of work, material lists and accurate cost estimates.
-Always respond in valid JSON format with the exact structure requested.
+    const systemPrompt = `You are PAI, an assistant for UK tradespeople generating job quotes.
+Output material lists and accurate cost estimates as valid JSON in the exact structure requested.
 Prices should be realistic UK market rates for ${new Date().getFullYear()}.
-Be concise and practical — you are writing for a working tradesperson, not a homeowner.`;
+STYLE RULES (important):
+- Keep the scope to 1-2 short, plain, factual sentences. NO marketing fluff, NO
+  flowery language, NO phrases like "attention to detail", "friendly relationship",
+  "ensuring quality", "timely manner". Write like a busy tradesperson, not a brochure.
+- Use the provided location EXACTLY as given. NEVER guess, expand, infer or "correct"
+  a postcode into a town/city (e.g. do not turn "EX23" into a town name). If no
+  location is given, do not mention one.`;
 
     // Build contractor context string
     const contractorContext = [
@@ -67,7 +72,7 @@ Use the contractor's own rates for labour estimates where provided. Price materi
 
 Respond with ONLY this JSON structure:
 {
-  "scope": "A professional 2-3 paragraph scope of work describing what will be done, how, and key considerations. Be specific and practical.",
+  "scope": "A concise 1-2 sentence scope of the work — plain and factual, no fluff.",
   "materials": [
     { "name": "Item name", "qty": 1, "unit": "each", "estimatedPrice": 0.00 }
   ],
