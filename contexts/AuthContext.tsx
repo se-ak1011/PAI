@@ -37,6 +37,7 @@ export interface UserProfile {
   // Portfolio
   portfolio_images?: string[];
   website?: string;
+  logo_url?: string;
   social_links?: Record<string, string>;
   // Availability
   availability_days?: string[];
@@ -170,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saved_postcode_areas: data.saved_postcode_areas || [],
       portfolio_images: data.portfolio_images || [],
       website: data.website,
+      logo_url: data.logo_url,
       social_links: data.social_links || {},
       availability_days: data.availability_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     };
@@ -427,6 +429,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data.saved_postcode_areas !== undefined) updateData.saved_postcode_areas = data.saved_postcode_areas;
     if (data.portfolio_images !== undefined) updateData.portfolio_images = data.portfolio_images;
     if (data.website !== undefined) updateData.website = data.website;
+    if (data.logo_url !== undefined) updateData.logo_url = data.logo_url;
     if (data.social_links !== undefined) updateData.social_links = data.social_links;
     if (data.availability_days !== undefined) updateData.availability_days = data.availability_days;
 

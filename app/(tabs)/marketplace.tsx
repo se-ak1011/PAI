@@ -241,6 +241,7 @@ export default function MarketplaceScreen() {
         </Pressable>
       </View>
       <View style={styles.topDivider} />
+      <View style={{ height: Spacing.xl }} />
 
       {/* Tab switch — only show if user has both roles */}
       {availableTabs.length > 1 ? (

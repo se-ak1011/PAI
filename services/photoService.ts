@@ -48,6 +48,34 @@ export async function pickAndUploadJobPhoto(
   return { path, error: null };
 }
 
+/**
+ * Pick a logo image and upload it to the PUBLIC `portfolio` bucket, returning a
+ * public URL (used for business branding on the profile + invoices).
+ */
+export async function pickAndUploadLogo(
+  userId: string,
+): Promise<{ url: string | null; error: string | null; cancelled?: boolean }> {
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) return { url: null, error: 'Photo library permission is needed.' };
+
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8, base64: true });
+  if (result.canceled || !result.assets?.[0]) return { url: null, error: null, cancelled: true };
+  const asset = result.assets[0];
+  if (!asset.base64) return { url: null, error: 'Could not read the image.' };
+
+  const isPng = (asset.mimeType || '').includes('png');
+  const ext = isPng ? 'png' : 'jpg';
+  const path = `${userId}/logo-${Date.now()}.${ext}`;
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.storage.from(PUBLIC_BUCKET).upload(path, decode(asset.base64), {
+    contentType: isPng ? 'image/png' : 'image/jpeg',
+    upsert: true,
+  });
+  if (error) return { url: null, error: error.message };
+  const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(path);
+  return { url: data?.publicUrl ?? null, error: null };
+}
+
 /** Resolve a private storage path to a temporary signed URL for display. */
 export async function getJobPhotoUrl(path: string): Promise<string | null> {
   const supabase = getSupabaseClient();

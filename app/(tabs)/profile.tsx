@@ -20,7 +20,7 @@ import { TRADE_CATEGORIES, SUBSCRIPTION, getContractorProfileUrl } from '@/const
 import { useRole } from '@/hooks/useRole';
 import { useJobs } from '@/hooks/useJobs';
 import { usePortfolio } from '@/hooks/usePortfolio';
-import { getJobPhotoUrls } from '@/services/photoService';
+import { getJobPhotoUrls, pickAndUploadLogo } from '@/services/photoService';
 import { getSupabaseClient } from '@/template/core';
 // MOCK_REVIEWS removed — reviews now fetched from Supabase below
 import { MaterialIcons } from '@expo/vector-icons';
@@ -70,6 +70,8 @@ function EditProfileModal({
   const [flexiblePricing, setFlexiblePricing] = useState((user as any)?.flexible_pricing ?? false);
   const [selectedTrades, setSelectedTrades] = useState<string[]>(user?.trades || []);
   const [website, setWebsite] = useState((user as any)?.website || '');
+  const [logoUrl, setLogoUrl] = useState((user as any)?.logo_url || '');
+  const [logoBusy, setLogoBusy] = useState(false);
   const [savedTrades, setSavedTrades] = useState<string[]>(user?.saved_trades || []);
   const [savedPostcodes, setSavedPostcodes] = useState<string>((user?.saved_postcode_areas || []).join(', '));
 
@@ -87,6 +89,7 @@ function EditProfileModal({
       setFlexiblePricing((user as any)?.flexible_pricing ?? false);
       setSelectedTrades(user?.trades || []);
       setWebsite((user as any)?.website || '');
+      setLogoUrl((user as any)?.logo_url || '');
       setSavedTrades(user?.saved_trades || []);
       setSavedPostcodes((user?.saved_postcode_areas || []).join(', '));
     }
@@ -94,6 +97,16 @@ function EditProfileModal({
 
   const toggleTrade = (t: string) => {
     setSelectedTrades(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+  };
+
+  const handleUploadLogo = async () => {
+    if (!user?.id) return;
+    setLogoBusy(true);
+    const { url, error, cancelled } = await pickAndUploadLogo(user.id);
+    setLogoBusy(false);
+    if (cancelled) return;
+    if (error || !url) { showAlert('Upload failed', error || 'Could not upload the logo.'); return; }
+    setLogoUrl(url);
   };
 
   const handleSave = async () => {
@@ -118,6 +131,7 @@ function EditProfileModal({
         .map(s => s.trim().toUpperCase())
         .filter(Boolean);
       if (website) updateData.website = website;
+      updateData.logo_url = logoUrl || undefined;
     } else {
       // Customer profile save — mark customer profile as complete
       if (name && city) {
@@ -234,6 +248,33 @@ function EditProfileModal({
                 <TextInput style={editStyles.input} value={website} onChangeText={setWebsite} placeholderTextColor={Colors.textMuted} placeholder="https://yourwebsite.com" autoCapitalize="none" />
               </View>
 
+              {/* Branding — business logo shown on quotes/invoices */}
+              <View style={editStyles.section}>
+                <Text style={editStyles.label}>BUSINESS LOGO (optional)</Text>
+                <View style={editStyles.logoRow}>
+                  {logoUrl ? (
+                    <Image source={{ uri: logoUrl }} style={editStyles.logoPreview} contentFit="contain" />
+                  ) : (
+                    <View style={[editStyles.logoPreview, editStyles.logoPlaceholder]}>
+                      <MaterialIcons name="image" size={24} color={Colors.textMuted} />
+                    </View>
+                  )}
+                  <Pressable style={editStyles.logoBtn} onPress={handleUploadLogo} disabled={logoBusy}>
+                    {logoBusy ? (
+                      <ActivityIndicator size="small" color={Colors.primaryGlow} />
+                    ) : (
+                      <Text style={editStyles.logoBtnText}>{logoUrl ? 'Change logo' : 'Upload logo'}</Text>
+                    )}
+                  </Pressable>
+                  {logoUrl ? (
+                    <Pressable hitSlop={8} onPress={() => setLogoUrl('')}>
+                      <MaterialIcons name="delete-outline" size={20} color={Colors.error} />
+                    </Pressable>
+                  ) : null}
+                </View>
+                <Text style={editStyles.toggleSub}>Shown on your quotes & invoices and public profile.</Text>
+              </View>
+
               <View style={editStyles.section}>
                 <Text style={editStyles.label}>MARKETPLACE: SAVED TRADES</Text>
                 <Text style={{ ...Typography.labelSM, color: Colors.textMuted, marginBottom: 8 }}>Job feed will prioritise these trades</Text>
@@ -298,6 +339,14 @@ const editStyles = StyleSheet.create({
   },
   toggleLabel: { ...Typography.bodyMD },
   toggleSub: { ...Typography.labelSM, color: Colors.textMuted, marginTop: 2 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logoPreview: { width: 56, height: 56, borderRadius: Radius.md, backgroundColor: Colors.cardAlt },
+  logoPlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
+  logoBtn: {
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.md,
+    backgroundColor: Colors.primaryDim, borderWidth: 1, borderColor: Colors.primaryLight,
+  },
+  logoBtnText: { ...Typography.labelMD, color: Colors.primaryGlow },
 });
 
 // ─────────────────────────────────────────────
