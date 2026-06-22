@@ -294,7 +294,7 @@ const editStyles = StyleSheet.create({
   toggleRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: Colors.cardAlt, borderRadius: Radius.md, borderWidth: 1,
-    borderColor: Colors.border, padding: 14,
+    borderColor: Colors.border, padding: 14, marginBottom: 20,
   },
   toggleLabel: { ...Typography.bodyMD },
   toggleSub: { ...Typography.labelSM, color: Colors.textMuted, marginTop: 2 },

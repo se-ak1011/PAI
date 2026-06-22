@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { ...Typography.headingMD },
-  scroll: { padding: Spacing.md, gap: 12, paddingBottom: 60 },
+  scroll: { padding: Spacing.md, paddingTop: Spacing.xl, gap: 12, paddingBottom: 60 },
 
   summaryCard: { backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 18, gap: 10 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

@@ -199,7 +199,7 @@ export default function TaxPotScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
-  scroll: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 },
+  scroll: { padding: Spacing.md, paddingTop: Spacing.xl, gap: Spacing.md, paddingBottom: 100 },
   header: { gap: 4 },
   title: { ...Typography.brandLG },
   subtitle: { ...Typography.labelSM },
