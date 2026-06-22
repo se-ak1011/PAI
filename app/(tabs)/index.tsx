@@ -118,28 +118,9 @@ function ContractorDashboard() {
           </View>
         </View>
 
-        {/* Trial / Subscription Card */}
-        {isOnTrial ? (
-          <View style={styles.trialCard}>
-            <View style={styles.trialHeader}>
-              <MaterialIcons name="auto-awesome" size={16} color={Colors.primaryGlow} />
-              <Text style={styles.trialBadge}>FREE TRIAL — {trialDays} DAYS LEFT</Text>
-            </View>
-            <Text style={styles.trialPrice}>
-              <Text style={styles.trialPound}>£</Text>25
-              <Text style={styles.trialPriceSub}>/month after trial</Text>
-            </Text>
-            <Text style={styles.trialSubtext}>
-              Flat fee. No job cuts. Keep 100% of every payment.
-            </Text>
-            <Pressable
-              style={styles.addPaymentBtn}
-              onPress={() => router.navigate('/(tabs)/profile')}
-            >
-              <Text style={styles.addPaymentBtnText}>Add payment method</Text>
-            </Pressable>
-          </View>
-        ) : user?.subscription_status === 'past_due' ? (
+        {/* Subscription setup now happens in onboarding — only surface a
+            payment-failed alert here, not the trial promo card. */}
+        {user?.subscription_status === 'past_due' ? (
           <View style={[styles.trialCard, { borderColor: Colors.error }]}>
             <View style={styles.trialHeader}>
               <MaterialIcons name="warning" size={16} color={Colors.error} />

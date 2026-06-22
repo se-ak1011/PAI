@@ -63,6 +63,8 @@ export default function JobsScreen() {
           </Pressable>
         </View>
 
+        <View style={{ height: Spacing.lg }} />
+
         <View style={styles.statStrip}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{activeCount}</Text>
