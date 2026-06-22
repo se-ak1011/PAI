@@ -7,7 +7,7 @@ export const APP_TAGLINE = 'Your trades business, sorted.';
 // Set EXPO_PUBLIC_WEB_BASE_URL in .env to wherever the web build is hosted
 // (e.g. https://pai.netlify.app or your custom domain). No trailing slash.
 export const PUBLIC_WEB_BASE_URL =
-  (process.env.EXPO_PUBLIC_WEB_BASE_URL || 'https://pai.app').replace(/\/$/, '');
+  (process.env.EXPO_PUBLIC_WEB_BASE_URL || 'https://paii.site').replace(/\/$/, '');
 
 export function getContractorProfileUrl(contractorId: string): string {
   return `${PUBLIC_WEB_BASE_URL}/contractor/${contractorId}`;
