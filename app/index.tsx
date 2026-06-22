@@ -1,5 +1,6 @@
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
+import { Image } from 'expo-image';
 import { useAuth } from '@/hooks/useAuth';
 import { Colors } from '@/constants/theme';
 
@@ -7,9 +8,16 @@ export default function Index() {
   const { isAuthenticated, isOnboarded, loading } = useAuth();
 
   if (loading) {
+    // Branded loading screen — a seamless continuation of the splash, so a slow
+    // start reads as "loading", not a broken black screen.
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={Colors.primaryGlow} size="large" />
+      <View style={styles.splash}>
+        <Image
+          source={require('@/assets/images/logo.png')}
+          style={styles.logo}
+          contentFit="contain"
+        />
+        <ActivityIndicator color={Colors.primaryGlow} size="small" style={styles.spinner} />
       </View>
     );
   }
@@ -18,3 +26,9 @@ export default function Index() {
   if (!isOnboarded) return <Redirect href="/onboarding" />;
   return <Redirect href="/(tabs)" />;
 }
+
+const styles = StyleSheet.create({
+  splash: { flex: 1, backgroundColor: '#12171C', alignItems: 'center', justifyContent: 'center' },
+  logo: { width: 120, height: 120 },
+  spinner: { marginTop: 28 },
+});

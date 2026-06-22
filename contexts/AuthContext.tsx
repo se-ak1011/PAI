@@ -183,13 +183,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let canceled = false;
 
+    // Hang guard: never leave the user stuck on the loading screen if startup
+    // stalls — but DO NOT sign them out (that was the cold-start sign-out bug).
+    const loadingGuard = setTimeout(() => { if (!canceled) setLoading(false); }, AUTH_STARTUP_TIMEOUT_MS);
+
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await withTimeout(
-          supabase.auth.getSession(),
-          AUTH_STARTUP_TIMEOUT_MS,
-          `[AuthContext] Timed out restoring auth session after ${AUTH_STARTUP_TIMEOUT_MS}ms`
-        );
+        // getSession() reads the persisted session from storage (local, fast) —
+        // do NOT race it with a throwing timeout, or a slow cold start signs the
+        // user out.
+        const { data: { session } } = await supabase.auth.getSession();
         if (canceled) return;
 
         setSession(session);
@@ -202,11 +205,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(profile ?? profileFromSession(session));
         }
       } catch (error) {
+        // Transient startup error — do NOT clear the session/user, or the user
+        // gets signed out on every launch. onAuthStateChange delivers the
+        // restored session shortly after.
         console.warn('[AuthContext] Failed to initialize session:', error);
-        setSession(null);
-        setUser(null);
       } finally {
         if (!canceled) {
+          clearTimeout(loadingGuard);
           setLoading(false);
         }
       }
@@ -229,6 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       canceled = true;
+      clearTimeout(loadingGuard);
       subscription.unsubscribe();
     };
   }, [supabase, fetchProfile]);
