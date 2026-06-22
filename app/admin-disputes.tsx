@@ -35,6 +35,12 @@ export default function AdminDisputesScreen() {
   const router = useRouter();
   const { showAlert } = useAlert();
   const { user } = useAuth();
+
+  // Guarded back: avoid no-op if opened cold (deep link / reload).
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
+  };
   const [disputes, setDisputes] = React.useState<Dispute[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [selected, setSelected] = React.useState<string | null>(null);
@@ -133,7 +139,7 @@ export default function AdminDisputesScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={goBack} hitSlop={8}>
           <MaterialIcons name="arrow-back" size={22} color={Colors.textSecondary} />
         </Pressable>
         <View>

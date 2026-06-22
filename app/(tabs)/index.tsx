@@ -14,6 +14,7 @@ import { AddIncomeModal } from '@/components/feature/AddIncomeModal';
 import { CreateJobModal } from '@/components/feature/CreateJobModal';
 import { PostJobModal } from '@/components/feature/PostJobModal';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useAlert } from '@/template/ui';
 import { RoleSwitcherBar } from './_layout';
 
 const { width } = Dimensions.get('window');
@@ -39,6 +40,7 @@ function ContractorDashboard() {
   const { user } = useAuth();
   const { privateJobs } = useJobs();
   const { summary } = useTaxPot();
+  const { showAlert } = useAlert();
   const [showIncome, setShowIncome] = useState(false);
   const [showJob, setShowJob] = useState(false);
 
@@ -83,7 +85,7 @@ function ContractorDashboard() {
 
       <View style={styles.topBar}>
         <Text style={styles.dashTitle}>Dashboard</Text>
-        <Pressable style={styles.bellBtn} onPress={() => {}}>
+        <Pressable style={styles.bellBtn} onPress={() => showAlert('Notifications', 'No new notifications.')}>
           <MaterialIcons name="notifications-none" size={22} color={Colors.textSecondary} />
         </Pressable>
       </View>
@@ -132,7 +134,7 @@ function ContractorDashboard() {
             </Text>
             <Pressable
               style={styles.addPaymentBtn}
-              onPress={() => router.push('/(tabs)/profile')}
+              onPress={() => router.navigate('/(tabs)/profile')}
             >
               <Text style={styles.addPaymentBtnText}>Add payment method</Text>
             </Pressable>
@@ -144,7 +146,7 @@ function ContractorDashboard() {
               <Text style={[styles.trialBadge, { color: Colors.error }]}>PAYMENT DUE</Text>
             </View>
             <Text style={styles.trialSubtext}>Your subscription payment failed. Update your payment method to continue using contractor tools.</Text>
-            <Pressable style={[styles.addPaymentBtn, { backgroundColor: Colors.error }]} onPress={() => {}}>
+            <Pressable style={[styles.addPaymentBtn, { backgroundColor: Colors.error }]} onPress={() => router.navigate('/(tabs)/profile')}>
               <Text style={styles.addPaymentBtnText}>Update payment method</Text>
             </Pressable>
           </View>
@@ -161,7 +163,7 @@ function ContractorDashboard() {
               <View style={[styles.setupBarFill, { width: `${setupProgress * 100}%` as any }]} />
             </View>
             {setupItems.map(item => (
-              <Pressable key={item.label} style={styles.setupItem} onPress={() => router.push(item.route as any)}>
+              <Pressable key={item.label} style={styles.setupItem} onPress={() => router.navigate(item.route as any)}>
                 <View style={[styles.setupCheck, item.done && styles.setupCheckDone]}>
                   {item.done ? <MaterialIcons name="check" size={12} color={Colors.textInverse} /> : null}
                 </View>
@@ -180,15 +182,15 @@ function ContractorDashboard() {
             <MaterialIcons name="add" size={26} color={Colors.primaryGlow} />
             <Text style={styles.quickLabel}>New job</Text>
           </Pressable>
-          <Pressable style={styles.quickBtn} onPress={() => router.push('/(tabs)/taxpot')}>
+          <Pressable style={styles.quickBtn} onPress={() => router.navigate('/(tabs)/taxpot')}>
             <MaterialIcons name="savings" size={26} color={Colors.primaryGlow} />
             <Text style={styles.quickLabel}>Set-aside</Text>
           </Pressable>
-          <Pressable style={styles.quickBtn} onPress={() => router.push('/(tabs)/jobs')}>
+          <Pressable style={styles.quickBtn} onPress={() => router.navigate('/(tabs)/jobs')}>
             <MaterialIcons name="folder-open" size={26} color={Colors.primaryGlow} />
             <Text style={styles.quickLabel}>Jobs ({privateJobs.length})</Text>
           </Pressable>
-          <Pressable style={styles.quickBtn} onPress={() => router.push('/(tabs)/marketplace')}>
+          <Pressable style={styles.quickBtn} onPress={() => router.navigate('/(tabs)/marketplace')}>
             <MaterialIcons name="people" size={26} color={Colors.primaryGlow} />
             <Text style={styles.quickLabel}>Marketplace</Text>
           </Pressable>
@@ -258,6 +260,7 @@ function CustomerDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const { jobPosts } = useJobs();
+  const { showAlert } = useAlert();
   const [showPostJob, setShowPostJob] = useState(false);
 
   const myPosts = jobPosts.filter(p => p.client_id === user?.id);
@@ -276,7 +279,7 @@ function CustomerDashboard() {
 
       <View style={styles.topBar}>
         <Text style={styles.dashTitle}>Dashboard</Text>
-        <Pressable style={styles.bellBtn}>
+        <Pressable style={styles.bellBtn} onPress={() => showAlert('Notifications', 'No new notifications.')}>
           <MaterialIcons name="notifications-none" size={22} color={Colors.textSecondary} />
         </Pressable>
       </View>
@@ -310,15 +313,15 @@ function CustomerDashboard() {
             <MaterialIcons name="add" size={26} color={Colors.primaryGlow} />
             <Text style={styles.quickLabel}>Post a job</Text>
           </Pressable>
-          <Pressable style={styles.quickBtn} onPress={() => router.push('/(tabs)/jobs')}>
+          <Pressable style={styles.quickBtn} onPress={() => router.navigate('/(tabs)/jobs')}>
             <MaterialIcons name="assignment" size={26} color={Colors.primaryGlow} />
             <Text style={styles.quickLabel}>My jobs</Text>
           </Pressable>
-          <Pressable style={styles.quickBtn} onPress={() => router.push('/(tabs)/marketplace')}>
+          <Pressable style={styles.quickBtn} onPress={() => router.navigate('/(tabs)/marketplace')}>
             <MaterialIcons name="location-on" size={26} color={Colors.primaryGlow} />
             <Text style={styles.quickLabel}>Trades near me</Text>
           </Pressable>
-          <Pressable style={styles.quickBtn} onPress={() => router.push('/(tabs)/marketplace')}>
+          <Pressable style={styles.quickBtn} onPress={() => router.navigate('/(tabs)/marketplace')}>
             <MaterialIcons name="storefront" size={26} color={Colors.primaryGlow} />
             <Text style={styles.quickLabel}>Find trades</Text>
           </Pressable>
@@ -334,7 +337,7 @@ function CustomerDashboard() {
               <View style={[styles.setupBarFill, { width: `${(doneCount / setupItems.length) * 100}%` as any }]} />
             </View>
             {setupItems.map(item => (
-              <Pressable key={item.label} style={styles.setupItem} onPress={() => router.push(item.route as any)}>
+              <Pressable key={item.label} style={styles.setupItem} onPress={() => router.navigate(item.route as any)}>
                 <View style={[styles.setupCheck, item.done && styles.setupCheckDone]}>
                   {item.done ? <MaterialIcons name="check" size={12} color={Colors.textInverse} /> : null}
                 </View>

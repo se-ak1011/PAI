@@ -789,7 +789,7 @@ function ContractorProfileTab() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Trades</Text>
-            <Pressable onPress={() => showAlert('Edit Trades', 'Trade management available in Edit Profile.')} hitSlop={8}>
+            <Pressable onPress={() => setShowEdit(true)} hitSlop={8}>
               <MaterialIcons name="edit" size={15} color={Colors.textMuted} />
             </Pressable>
           </View>

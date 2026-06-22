@@ -20,7 +20,7 @@ export default function NotFoundScreen() {
 
         <TouchableOpacity
           style={styles.homeButton}
-          onPress={() => router.push('/')}
+          onPress={() => router.replace('/')}
         >
           <Text style={styles.homeButtonText}>Return home</Text>
         </TouchableOpacity>

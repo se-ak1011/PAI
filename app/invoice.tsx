@@ -34,6 +34,13 @@ export default function InvoiceScreen() {
   const { showAlert } = useAlert();
   const [marking, setMarking] = React.useState(false);
 
+  // Guarded back: if there's no history (deep link / cold start), go to the app
+  // instead of no-op'ing and stranding the user.
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
+  };
+
   const job = privateJobs.find(j => j.id === id);
 
   if (!job) {
@@ -41,7 +48,7 @@ export default function InvoiceScreen() {
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.center}>
           <Text style={styles.notFound}>Invoice not found</Text>
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={goBack}>
             <Text style={styles.backLink}>Go back</Text>
           </Pressable>
         </View>
@@ -153,7 +160,7 @@ export default function InvoiceScreen() {
             });
             setMarking(false);
             showAlert('Payment Recorded', 'Income added to your Tax Pot automatically.');
-            router.back();
+            goBack();
           },
         },
       ]
@@ -166,7 +173,7 @@ export default function InvoiceScreen() {
 
       {/* Nav */}
       <View style={styles.nav}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={goBack} hitSlop={8}>
           <MaterialIcons name="arrow-back" size={22} color={Colors.textSecondary} />
         </Pressable>
         <Text style={styles.navTitle}>{isEstimateMode ? 'Estimate' : 'Invoice'}</Text>
