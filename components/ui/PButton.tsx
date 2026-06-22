@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
 import { Colors, Radius, Typography } from '@/constants/theme';
+import { haptics } from '@/lib/haptics';
 
 interface PButtonProps {
   label: string;
@@ -35,7 +36,7 @@ export function PButton({ label, onPress, variant = 'primary', size = 'md', load
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => { (variant === 'danger' ? haptics.warn : haptics.tap)(); onPress(); }}
       disabled={isDisabled}
       style={({ pressed }) => [...containerStyle, pressed && styles.pressed]}
       hitSlop={8}

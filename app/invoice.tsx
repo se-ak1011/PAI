@@ -11,6 +11,7 @@ import { useTaxPot } from '@/hooks/useTaxPot';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template/ui';
 import { APP_NAME } from '@/constants/config';
+import { haptics } from '@/lib/haptics';
 import { MaterialIcons } from '@expo/vector-icons';
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
@@ -159,6 +160,7 @@ export default function InvoiceScreen() {
               date_completed: today,
             });
             setMarking(false);
+            haptics.success();
             showAlert('Payment Recorded', 'Income added to your Tax Pot automatically.');
             goBack();
           },

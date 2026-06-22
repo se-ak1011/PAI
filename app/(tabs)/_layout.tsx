@@ -4,6 +4,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Typography, Radius, Spacing } from '@/constants/theme';
+import { haptics } from '@/lib/haptics';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import type { ActiveRole } from '@/contexts/RoleContext';
@@ -27,6 +28,7 @@ export function RoleSwitcherBar({ currentTab }: { currentTab?: string }) {
   ];
 
   const handlePress = (id: ActiveRole | 'profile_nav') => {
+    haptics.select();
     if (id === 'profile_nav') {
       router.navigate('/(tabs)/profile');
     } else {

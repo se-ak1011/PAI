@@ -10,6 +10,7 @@ import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
 import { pickAndUploadJobPhoto, getJobPhotoUrls, deleteJobPhoto } from '@/services/photoService';
+import { haptics } from '@/lib/haptics';
 import { getSupabaseClient } from '@/template/core';
 import { useTaxPot } from '@/hooks/useTaxPot';
 import { useAlert } from '@/template/ui';
@@ -181,8 +182,9 @@ export default function JobDetailScreen() {
     const { path, error, cancelled } = await pickAndUploadJobPhoto(user.id, job.id, source);
     setPhotoBusy(false);
     if (cancelled) return;
-    if (error || !path) { showAlert('Upload failed', error || 'Could not upload the photo.'); return; }
+    if (error || !path) { haptics.error(); showAlert('Upload failed', error || 'Could not upload the photo.'); return; }
     await updatePrivateJob(job.id, { progress_photos: [...(job.progress_photos ?? []), path] });
+    haptics.success();
   };
 
   const handleAddPhoto = () => {

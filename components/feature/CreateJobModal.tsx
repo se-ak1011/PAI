@@ -10,6 +10,7 @@ import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template/ui';
 import { generateAIQuote, AIQuoteResult } from '@/services/aiService';
+import { haptics } from '@/lib/haptics';
 import { MaterialIcons } from '@expo/vector-icons';
 
 interface CreateJobModalProps {
@@ -133,11 +134,13 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
     setAiLoading(false);
 
     if (error || !data) {
+      haptics.error();
       showAlert('AI Error', error || 'Could not generate quote. Check your connection.');
       setStep(0);
       return;
     }
 
+    haptics.success();
     setAiResult(data);
     // Pre-fill title from scope first sentence
     const firstLine = data.scope?.split('.')[0]?.trim();
@@ -201,6 +204,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
       actual_hours: null,
     });
     setSaving(false);
+    haptics.success();
     handleClose();
   };
 
