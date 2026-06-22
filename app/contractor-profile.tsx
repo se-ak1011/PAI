@@ -279,17 +279,12 @@ export default function ContractorProfileScreen() {
           </View>
         </View>
 
-        {/* Portfolio placeholder */}
+        {/* Portfolio */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Portfolio</Text>
-          <View style={styles.portfolioGrid}>
-            {[
-              'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=300&fit=crop',
-              'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=300&fit=crop',
-              'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=300&fit=crop',
-            ].map((uri, i) => (
-              <Image key={i} source={{ uri }} style={styles.portfolioImg} contentFit="cover" transition={200} />
-            ))}
+          <View style={styles.portfolioEmpty}>
+            <MaterialIcons name="photo-library" size={24} color={Colors.textMuted} />
+            <Text style={styles.portfolioEmptyText}>No portfolio photos yet</Text>
           </View>
         </View>
 
@@ -397,6 +392,13 @@ const styles = StyleSheet.create({
   calendarNote: { ...Typography.labelSM, color: Colors.textMuted, textAlign: 'center' },
   portfolioGrid: { flexDirection: 'row', gap: 8 },
   portfolioImg: { flex: 1, height: 100, borderRadius: Radius.md, overflow: 'hidden' },
+  portfolioEmpty: {
+    alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 28, paddingHorizontal: 16,
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border, borderStyle: 'dashed',
+  },
+  portfolioEmptyText: { ...Typography.labelMD, color: Colors.textSecondary },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 14 },
   linkText: { ...Typography.bodyMD, color: Colors.textSecondary, flex: 1 },
   reviewCard: { backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 14, gap: 8 },

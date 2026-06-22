@@ -683,12 +683,6 @@ function ContractorProfileTab() {
     );
   }
 
-  const portfolioPlaceholders = [
-    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=300&fit=crop',
-  ];
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="light" />
@@ -848,22 +842,16 @@ function ContractorProfileTab() {
               <Text style={styles.addPhotoBtnText}>Add photo</Text>
             </Pressable>
           </View>
-          <View style={styles.portfolioGrid}>
-            {portfolioPlaceholders.map((uri, i) => (
-              <Pressable
-                key={i}
-                onPress={() => showAlert('Portfolio', 'Photo management coming with storage integration.')}
-              >
-                <Image source={{ uri }} style={styles.portfolioImg} contentFit="cover" transition={200} />
-                <View style={styles.portfolioOverlay}>
-                  <MaterialIcons name="edit" size={14} color={Colors.textInverse} />
-                </View>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.portfolioHint}>
-            Tap a photo to edit or remove. Photos are visible on your public contractor profile.
-          </Text>
+          <Pressable
+            style={styles.portfolioEmpty}
+            onPress={() => showAlert('Photo Upload', 'Portfolio photo upload coming soon.')}
+          >
+            <MaterialIcons name="add-photo-alternate" size={28} color={Colors.textMuted} />
+            <Text style={styles.portfolioEmptyText}>No portfolio photos yet</Text>
+            <Text style={styles.portfolioEmptySub}>
+              Add photos to showcase your best work on your public profile.
+            </Text>
+          </Pressable>
         </View>
 
         {/* Website / Social */}
@@ -1233,6 +1221,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
   },
   portfolioHint: { ...Typography.labelXS, color: Colors.textMuted },
+  portfolioEmpty: {
+    alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 28, paddingHorizontal: 16,
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border, borderStyle: 'dashed',
+  },
+  portfolioEmptyText: { ...Typography.labelMD, color: Colors.textSecondary },
+  portfolioEmptySub: { ...Typography.labelXS, color: Colors.textMuted, textAlign: 'center' },
 
   // Links
   linkRow: {
