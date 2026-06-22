@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AddIncomeModal } from '@/components/feature/AddIncomeModal';
 import { RoleSwitcherBar } from './_layout';
@@ -14,6 +15,7 @@ type FilterType = 'All' | 'PAI' | 'Manual';
 export default function TaxPotScreen() {
   const { summary, allIncome, taxRate, setTaxRate, deleteManualIncome } = useTaxPot();
   const { user } = useAuth();
+  const router = useRouter();
   const [showModal, setShowModal] = useState(false);
   const [incomeFilter, setIncomeFilter] = useState<FilterType>('All');
 
@@ -107,6 +109,18 @@ export default function TaxPotScreen() {
             Projections are based on your current income run-rate and are for guidance only. Actual tax liability may vary. Consult a qualified accountant.
           </Text>
         </View>
+
+        {/* Receipt Vault entry */}
+        <Pressable style={styles.vaultBtn} onPress={() => router.push('/receipt-vault')}>
+          <View style={styles.vaultIcon}>
+            <MaterialIcons name="receipt-long" size={20} color={Colors.primaryGlow} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.vaultTitle}>Receipt Vault</Text>
+            <Text style={styles.vaultSub}>Log expenses & track deductibles</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={22} color={Colors.textMuted} />
+        </Pressable>
 
         {/* Income Log */}
         <View style={styles.section}>
@@ -213,6 +227,13 @@ const styles = StyleSheet.create({
   potTotalValue: { ...Typography.dataLG },
   section: { gap: 14 },
   sectionTitle: { ...Typography.headingMD },
+  vaultBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 14,
+  },
+  vaultIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.primaryDim, alignItems: 'center', justifyContent: 'center' },
+  vaultTitle: { ...Typography.labelMD, color: Colors.textPrimary, fontWeight: '600' },
+  vaultSub: { ...Typography.labelSM, color: Colors.textMuted },
   rateRow: { flexDirection: 'row', gap: 10 },
   rateBtn: {
     flex: 1, padding: 16, borderRadius: Radius.lg, borderWidth: 1,
