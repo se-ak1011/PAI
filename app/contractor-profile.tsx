@@ -70,6 +70,7 @@ export default function ContractorProfileScreen() {
   const { showAlert } = useAlert();
   const [contractor, setContractor] = useState<ContractorData | null>(null);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export default function ContractorProfileScreen() {
     const supabase = getSupabaseClient();
 
     const fetchData = async () => {
-      const [profileRes, reviewsRes] = await Promise.all([
+      const [profileRes, reviewsRes, projectsRes] = await Promise.all([
         supabase
           .from('user_profiles')
           .select('id, username, business_name, bio, trades, hourly_rate_from, city, postcode_area, avatar_url, available, website, availability_days')
@@ -89,6 +90,12 @@ export default function ContractorProfileScreen() {
           .eq('subject_id', id)
           .eq('mode', 'customer_to_contractor')
           .order('created_at', { ascending: false }),
+        supabase
+          .from('portfolio_projects')
+          .select('id, title, trade, location, description, photos, verified')
+          .eq('contractor_id', id)
+          .eq('published', true)
+          .order('created_at', { ascending: false }),
       ]);
 
       if (profileRes.data) {
@@ -99,6 +106,9 @@ export default function ContractorProfileScreen() {
           ...r,
           author_name: r.author?.username || 'Customer',
         })));
+      }
+      if (projectsRes.data) {
+        setProjects(projectsRes.data);
       }
       setLoading(false);
     };
@@ -282,10 +292,42 @@ export default function ContractorProfileScreen() {
         {/* Portfolio */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Portfolio</Text>
-          <View style={styles.portfolioEmpty}>
-            <MaterialIcons name="photo-library" size={24} color={Colors.textMuted} />
-            <Text style={styles.portfolioEmptyText}>No portfolio photos yet</Text>
-          </View>
+          {projects.length === 0 ? (
+            <View style={styles.portfolioEmpty}>
+              <MaterialIcons name="photo-library" size={24} color={Colors.textMuted} />
+              <Text style={styles.portfolioEmptyText}>No portfolio photos yet</Text>
+            </View>
+          ) : (
+            projects.map((proj: any) => {
+              const urls: string[] = (proj.photos || [])
+                .map((p: any) => p?.public_url)
+                .filter(Boolean);
+              return (
+                <View key={proj.id} style={styles.projectCard}>
+                  <View style={styles.projectHead}>
+                    <Text style={styles.projectTitle} numberOfLines={1}>{proj.title}</Text>
+                    {proj.verified ? (
+                      <View style={styles.verifiedBadge}>
+                        <MaterialIcons name="verified" size={12} color={Colors.primaryGlow} />
+                        <Text style={styles.verifiedText}>Verified</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {(proj.trade || proj.location) ? (
+                    <Text style={styles.projectMeta}>{[proj.trade, proj.location].filter(Boolean).join(' • ')}</Text>
+                  ) : null}
+                  {urls.length > 0 ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectPhotos}>
+                      {urls.map((u, i) => (
+                        <Image key={i} source={{ uri: u }} style={styles.projectPhoto} contentFit="cover" transition={150} />
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  {proj.description ? <Text style={styles.projectDesc} numberOfLines={3}>{proj.description}</Text> : null}
+                </View>
+              );
+            })
+          )}
         </View>
 
         {/* Website */}
@@ -399,6 +441,15 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border, borderStyle: 'dashed',
   },
   portfolioEmptyText: { ...Typography.labelMD, color: Colors.textSecondary },
+  projectCard: { backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 14, gap: 8, marginBottom: 10 },
+  projectHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  projectTitle: { ...Typography.labelMD, color: Colors.textPrimary, fontWeight: '600', flex: 1 },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.primaryDim, borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
+  verifiedText: { ...Typography.labelXS, color: Colors.primaryGlow },
+  projectMeta: { ...Typography.labelSM, color: Colors.textMuted },
+  projectPhotos: { gap: 8 },
+  projectPhoto: { width: 130, height: 100, borderRadius: Radius.md, backgroundColor: Colors.cardAlt },
+  projectDesc: { ...Typography.labelSM, color: Colors.textSecondary, lineHeight: 18 },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 14 },
   linkText: { ...Typography.bodyMD, color: Colors.textSecondary, flex: 1 },
   reviewCard: { backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 14, gap: 8 },

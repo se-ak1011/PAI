@@ -2,6 +2,7 @@ import React, { createContext, ReactNode, useCallback, useContext, useEffect, us
 import { AuthContext } from '@/contexts/AuthContext';
 import { PrivateJob } from '@/contexts/JobsContext';
 import { withTimeout } from '@/utils/asyncTimeout';
+import { copyJobPhotoToPublic } from '@/services/photoService';
 import { deferUntilAfterFirstPaint, getDeferredSupabaseClient, type DeferredSupabaseClient } from '@/utils/deferredSupabase';
 
 export type PortfolioProjectSource = 'completed_job' | 'photo_library';
@@ -10,6 +11,7 @@ export interface PortfolioPhotoRef {
   path: string;
   source_job_id?: string | null;
   sort_order: number;
+  public_url?: string | null; // set once copied to the public `portfolio` bucket
 }
 
 export interface PortfolioProject {
@@ -91,7 +93,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
   const createProjectFromCompletedJob: PortfolioContextType['createProjectFromCompletedJob'] = async (job, options = {}) => {
     if (!supabase || !user || (job.progress_photos ?? []).length === 0) return null;
-    const photos = (job.progress_photos ?? []).map((path, sort_order) => ({ path, source_job_id: job.id, sort_order }));
+    // Copy each private job photo into the public `portfolio` bucket so the public
+    // web profile can show it. Falls back to the private path if a copy fails.
+    const projectKey = `${Date.now()}`;
+    const photos: PortfolioPhotoRef[] = await Promise.all(
+      (job.progress_photos ?? []).map(async (path, sort_order) => {
+        const ext = path.split('.').pop() || 'jpg';
+        const dest = `${user.id}/${projectKey}/${sort_order}.${ext}`;
+        const public_url = await copyJobPhotoToPublic(path, dest);
+        return { path, source_job_id: job.id, sort_order, public_url };
+      }),
+    );
     const payload = {
       contractor_id: user.id,
       source: 'completed_job' as const,

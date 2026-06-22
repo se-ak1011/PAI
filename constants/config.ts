@@ -4,7 +4,10 @@ export const APP_TAGLINE = 'Your trades business, sorted.';
 // ─── Public web URLs ────────────────────────────────────────
 // Base domain for shareable public pages (contractor landing pages).
 // The /contractor/{id} route is served by the web build via expo-router.
-export const PUBLIC_WEB_BASE_URL = 'https://pai.app';
+// Set EXPO_PUBLIC_WEB_BASE_URL in .env to wherever the web build is hosted
+// (e.g. https://pai.netlify.app or your custom domain). No trailing slash.
+export const PUBLIC_WEB_BASE_URL =
+  (process.env.EXPO_PUBLIC_WEB_BASE_URL || 'https://pai.app').replace(/\/$/, '');
 
 export function getContractorProfileUrl(contractorId: string): string {
   return `${PUBLIC_WEB_BASE_URL}/contractor/${contractorId}`;

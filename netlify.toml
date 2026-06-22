@@ -1,0 +1,13 @@
+# Hosting config for the PAI public web build (contractor landing pages).
+# Connect this repo to Netlify; it will read this file.
+# Set these environment variables in Netlify (Site settings → Environment):
+#   EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY, EXPO_PUBLIC_WEB_BASE_URL
+[build]
+  command = "npx expo export --platform web"
+  publish = "dist"
+
+# SPA fallback so dynamic routes like /contractor/<id> resolve client-side.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

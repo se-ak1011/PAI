@@ -67,3 +67,21 @@ export async function deleteJobPhoto(path: string): Promise<boolean> {
   const { error } = await supabase.storage.from(BUCKET).remove([path]);
   return !error;
 }
+
+const PUBLIC_BUCKET = 'portfolio';
+
+/**
+ * Copy a private job photo into the PUBLIC `portfolio` bucket so it can be shown
+ * on the public web profile, and return its public URL. Owner-only (download
+ * requires the owner's session); returns null on failure.
+ */
+export async function copyJobPhotoToPublic(privatePath: string, destPath: string): Promise<string | null> {
+  const supabase = getSupabaseClient();
+  const { data: blob, error: dErr } = await supabase.storage.from(BUCKET).download(privatePath);
+  if (dErr || !blob) return null;
+  const contentType = (blob as any).type || 'image/jpeg';
+  const { error: uErr } = await supabase.storage.from(PUBLIC_BUCKET).upload(destPath, blob, { contentType, upsert: true });
+  if (uErr) return null;
+  const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(destPath);
+  return data?.publicUrl ?? null;
+}
