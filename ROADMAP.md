@@ -3,6 +3,7 @@
 Working roadmap of decisions and upcoming work. Companion to:
 - `PROJECT_STATUS.md` — current state / what's built vs stubbed.
 - `PAYMENTS.md` — payments decision record (the "two rails").
+- `POLISH.md` — "nice → premium" UX polish checklist (haptics, motion, skeletons, etc.).
 
 > How to use: keep this updated as decisions are made. Each item notes **why**,
 > the **work involved**, and any **open questions / caveats**. Nothing here is a
@@ -50,6 +51,38 @@ Working roadmap of decisions and upcoming work. Companion to:
 ### 3. AI quote — confirm live
 - Confirm `ai-quote` Edge Function is deployed and `OPENAI_API_KEY` secret is set
   in Supabase, then test a quote end-to-end. (Supabase client connection already live.)
+
+---
+
+## 🧾 Receipt Vault + Claimable Expenses (Tax Pot)
+
+A standout feature that deepens PAI's tax angle. **Reuses infra you already have.**
+
+**Flow:**
+1. Income lands on a job → PAI prompts *"Any expenses for this job?"*
+2. Trader uploads receipts (materials, tools, PPE, parking, fuel, work clothes, subcontractors).
+3. **AI reads the receipt** and suggests: category · amount · business/personal/mixed ·
+   **confidence score** · *"ask your accountant"* when unsure.
+4. Tax Pot then shows: estimated tax set-aside · **potential deductible expenses** ·
+   **estimated taxable profit** (income − allowable expenses) · receipts needing review.
+
+**How it maps onto what exists (low new-infra cost):**
+- **AI:** new `ai-receipt` Edge Function mirroring `ai-quote`, using **OpenAI vision**
+  (gpt-4o-mini accepts images) to extract vendor/amount/date/line items + suggest category.
+- **Storage:** a private `receipts` bucket (same owner-scoped pattern as `job-photos`).
+- **Data:** an `expenses` table (or extend the existing `private_jobs.receipts` field) —
+  fields: job_id, amount, category, split (business/personal/mixed), confidence,
+  image_path, status (suggested/confirmed/needs-review).
+- **Tax Pot:** extend the existing set-aside math → taxable profit = income − confirmed
+  deductibles; add a "needs review" queue.
+
+**Considerations / caveats:**
+- ⚠️ **Not tax advice.** Show a clear disclaimer; the "ask your accountant" flag and
+  confidence score are the trust mechanism. AI suggestions are drafts the trader confirms.
+- ⚠️ **UK allowable-expense nuance** (e.g. everyday clothing generally *not* deductible,
+  only protective/uniform; mileage vs fuel methods) — encode rules carefully, conservatively.
+- Depends on: Storage (same as photos) + OpenAI billing (same key) + a confirm/edit UX.
+- Great "Ooo" moment: snap a receipt → watch PAI fill in the fields. Pairs with `POLISH.md`.
 
 ---
 
