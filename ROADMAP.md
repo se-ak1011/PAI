@@ -25,6 +25,9 @@ Working roadmap of decisions and upcoming work. Companion to:
 - **Auto-incrementing build number** (timestamp-based) — TestFlight uploads can no
   longer collide on version. Marketing version is bumped manually per release.
 - **Settings shows the real app version** (from `expo-constants`, not hardcoded).
+- **Contractor onboarding paywall (UI)** — final onboarding step presents the 14-day
+  trial + £25/mo offer; CTA starts the trial. Real RevenueCat purchase wired later.
+- **Polish:** removed fake stock-photo portfolios (own + public profile) → empty states.
 
 ---
 
@@ -77,6 +80,12 @@ Two separate rails:
     sales call (cognitive-load cost — noted).
   - ❌ Paddle / Lemon Squeezy — merchant-of-record for *digital goods*, NOT
     person-to-person job payments. Not a fit for Rail B.
+- **Customer payment up-front (decision):** capture the customer's payment method
+  during **customer onboarding** (not at quote-acceptance), so they can post / request
+  quotes and never get blocked at the accept moment. ⚠️ Can't build until the provider
+  is chosen — the card-capture UI *is* the provider's SDK, and we must not handle raw
+  card data ourselves. Build the customer onboarding step + acceptance flow together
+  with the escrow integration.
 - **❓ Open:** pick the provider after confirming the Stripe Connect hold limits.
 - **⚠️ Legal:** UK payment/safeguarding rules warrant a short paid legal sanity-check
   before launch. Cheaper than guessing wrong.
