@@ -17,6 +17,7 @@ export interface PrivateJob {
   vat: number;
   materials_items: { name: string; qty: number; price: number; unit?: string }[];
   receipts: string[];
+  progress_photos?: string[];
   invoiced_at: string | null;
   paid_at: string | null;
   created_at: string;
@@ -113,6 +114,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         ...j,
         materials_items: j.materials_items || [],
         receipts: j.receipts || [],
+        progress_photos: j.progress_photos || [],
         job_type: j.job_type ?? 'fixed',
         hourly_rate: j.hourly_rate ?? null,
         estimated_hours: j.estimated_hours ?? null,
@@ -202,7 +204,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       .select()
       .single();
     if (!error && data) {
-      setPrivateJobs(prev => [{ ...data, materials_items: data.materials_items || [], receipts: data.receipts || [], job_type: data.job_type ?? 'fixed', hourly_rate: data.hourly_rate ?? null, estimated_hours: data.estimated_hours ?? null, actual_hours: data.actual_hours ?? null }, ...prev]);
+      setPrivateJobs(prev => [{ ...data, materials_items: data.materials_items || [], receipts: data.receipts || [], progress_photos: data.progress_photos || [], job_type: data.job_type ?? 'fixed', hourly_rate: data.hourly_rate ?? null, estimated_hours: data.estimated_hours ?? null, actual_hours: data.actual_hours ?? null }, ...prev]);
     }
   };
 

@@ -5,8 +5,11 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { Image } from 'expo-image';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useJobs } from '@/hooks/useJobs';
+import { useAuth } from '@/hooks/useAuth';
+import { pickAndUploadJobPhoto, getJobPhotoUrls, deleteJobPhoto } from '@/services/photoService';
 import { getSupabaseClient } from '@/template/core';
 import { useTaxPot } from '@/hooks/useTaxPot';
 import { useAlert } from '@/template/ui';
@@ -43,10 +46,28 @@ export default function JobDetailScreen() {
   const router = useRouter();
   const { privateJobs, updatePrivateJob, deletePrivateJob } = useJobs();
   const { addPAIJobIncome } = useTaxPot();
+  const { user } = useAuth();
   const { showAlert } = useAlert();
 
   const job = privateJobs.find(j => j.id === id);
   const [updating, setUpdating] = useState(false);
+
+  // Progress photos: resolve private storage paths -> temporary signed URLs.
+  const photoPaths = job?.progress_photos ?? [];
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [photoBusy, setPhotoBusy] = useState(false);
+  React.useEffect(() => {
+    let active = true;
+    if (photoPaths.length === 0) { setPhotoUrls({}); return; }
+    (async () => {
+      const urls = await getJobPhotoUrls(photoPaths);
+      if (!active) return;
+      const map: Record<string, string> = {};
+      photoPaths.forEach((p, i) => { const u = urls[i]; if (u) map[p] = u; });
+      setPhotoUrls(map);
+    })();
+    return () => { active = false; };
+  }, [photoPaths.join('|')]);
   const [showReviewModal, setShowReviewModal] = useState(false);
   // Actual hours prompt for hourly jobs
   const [showHoursPrompt, setShowHoursPrompt] = useState(false);
@@ -154,6 +175,36 @@ export default function JobDetailScreen() {
     router.push({ pathname: '/invoice', params: { id: job.id } });
   };
 
+  const doAddPhoto = async (source: 'camera' | 'library') => {
+    if (!user?.id || !job) return;
+    setPhotoBusy(true);
+    const { path, error, cancelled } = await pickAndUploadJobPhoto(user.id, job.id, source);
+    setPhotoBusy(false);
+    if (cancelled) return;
+    if (error || !path) { showAlert('Upload failed', error || 'Could not upload the photo.'); return; }
+    await updatePrivateJob(job.id, { progress_photos: [...(job.progress_photos ?? []), path] });
+  };
+
+  const handleAddPhoto = () => {
+    showAlert('Add progress photo', 'Attach a photo of the work to this job.', [
+      { text: 'Take photo', onPress: () => doAddPhoto('camera') },
+      { text: 'Choose from library', onPress: () => doAddPhoto('library') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleDeletePhoto = (path: string) => {
+    showAlert('Remove photo', 'Remove this photo from the job?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove', style: 'destructive', onPress: async () => {
+          await deleteJobPhoto(path);
+          if (job) await updatePrivateJob(job.id, { progress_photos: (job.progress_photos ?? []).filter(p => p !== path) });
+        },
+      },
+    ]);
+  };
+
   const handleDelete = () => {
     showAlert('Delete Job', 'This will permanently delete this job. Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
@@ -248,6 +299,41 @@ export default function JobDetailScreen() {
             <Text style={styles.description}>{job.description}</Text>
           </View>
         ) : null}
+
+        {/* Progress photos */}
+        <View style={styles.section}>
+          <View style={styles.photoHeader}>
+            <Text style={styles.sectionTitle}>Progress Photos</Text>
+            <Pressable style={styles.addPhotoBtn} onPress={handleAddPhoto} disabled={photoBusy} hitSlop={8}>
+              {photoBusy ? (
+                <ActivityIndicator size="small" color={Colors.primaryGlow} />
+              ) : (
+                <>
+                  <MaterialIcons name="add-a-photo" size={15} color={Colors.primaryGlow} />
+                  <Text style={styles.addPhotoBtnText}>Add</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+          {photoPaths.length === 0 ? (
+            <Text style={styles.photoEmpty}>No photos yet. Snap before/after shots to document the work.</Text>
+          ) : (
+            <>
+              <View style={styles.photoGrid}>
+                {photoPaths.map(p => (
+                  <Pressable key={p} onLongPress={() => handleDeletePhoto(p)} style={styles.photoThumb}>
+                    {photoUrls[p] ? (
+                      <Image source={{ uri: photoUrls[p] }} style={styles.photoImg} contentFit="cover" transition={150} />
+                    ) : (
+                      <View style={styles.photoLoading}><ActivityIndicator size="small" color={Colors.textMuted} /></View>
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.photoHint}>Long-press a photo to remove it.</Text>
+            </>
+          )}
+        </View>
 
         {/* Client reliability — visible only for marketplace-sourced jobs */}
         {job.source_job_post_id && reliabilityScore ? (
@@ -510,6 +596,22 @@ const styles = StyleSheet.create({
   section: { gap: 12 },
   sectionTitle: { ...Typography.headingMD },
   description: { ...Typography.bodyMD, color: Colors.textSecondary, lineHeight: 22 },
+  photoHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  addPhotoBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 56, justifyContent: 'center',
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.pill,
+    backgroundColor: Colors.primaryDim, borderWidth: 1, borderColor: Colors.primaryLight,
+  },
+  addPhotoBtnText: { ...Typography.labelSM, color: Colors.primaryGlow },
+  photoEmpty: { ...Typography.bodySM, color: Colors.textMuted, lineHeight: 20 },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  photoThumb: {
+    width: 96, height: 96, borderRadius: Radius.md, overflow: 'hidden',
+    backgroundColor: Colors.cardAlt, borderWidth: 1, borderColor: Colors.border,
+  },
+  photoImg: { width: '100%', height: '100%' },
+  photoLoading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  photoHint: { ...Typography.labelXS, color: Colors.textMuted },
   breakdownCard: {
     backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
     borderColor: Colors.border, padding: 16, gap: 10,
