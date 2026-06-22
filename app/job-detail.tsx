@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, TextInput,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, TextInput, Modal, Linking,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { findNearbyShops, shopMapsUrl, NearbyShop } from '@/services/shopsService';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
@@ -75,6 +77,10 @@ export default function JobDetailScreen() {
   // Actual hours prompt for hourly jobs
   const [showHoursPrompt, setShowHoursPrompt] = useState(false);
   const [actualHoursStr, setActualHoursStr] = useState('');
+  // Shops near me
+  const [showShops, setShowShops] = useState(false);
+  const [shops, setShops] = useState<NearbyShop[]>([]);
+  const [shopsLoading, setShopsLoading] = useState(false);
 
   // Reliability score — look up customer on PAI-marketplace jobs (have source_job_post_id + client_id)
   const [customerId, setCustomerId] = React.useState<string | null>(null);
@@ -232,6 +238,36 @@ export default function JobDetailScreen() {
       { text: 'Not now', style: 'cancel' },
       { text: 'Yes', onPress: handleCreatePortfolioProject },
     ]);
+  };
+
+  const toggleMaterial = (index: number) => {
+    if (!job) return;
+    haptics.select();
+    const items = (job.materials_items || []).map((m, i) => i === index ? { ...m, got: !m.got } : m);
+    updatePrivateJob(job.id, { materials_items: items });
+  };
+
+  const handleFindShops = async () => {
+    setShowShops(true);
+    setShopsLoading(true);
+    setShops([]);
+    const perm = await Location.requestForegroundPermissionsAsync();
+    if (!perm.granted) {
+      setShopsLoading(false);
+      showAlert('Location needed', 'Allow location access to find trade shops near you.');
+      return;
+    }
+    try {
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { shops: found, error } = await findNearbyShops(pos.coords.latitude, pos.coords.longitude);
+      setShopsLoading(false);
+      if (error) { haptics.warn(); showAlert('Lookup failed', error); return; }
+      setShops(found);
+      if (found.length === 0) showAlert('No shops found', 'No trade shops found nearby. Try again from a different spot.');
+    } catch {
+      setShopsLoading(false);
+      showAlert('Location error', 'Could not get your location. Try again.');
+    }
   };
 
   const handleDelete = () => {
@@ -461,24 +497,67 @@ export default function JobDetailScreen() {
           ) : null}
         </View>
 
-        {/* Materials */}
+        {/* Shopping list (materials, checkable) */}
         {job.materials_items && job.materials_items.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Materials List</Text>
+            <View style={styles.photoHeader}>
+              <Text style={styles.sectionTitle}>
+                Shopping List ({job.materials_items.filter((m: any) => m.got).length}/{job.materials_items.length})
+              </Text>
+              <Pressable style={styles.shopsBtn} onPress={handleFindShops} hitSlop={8}>
+                <MaterialIcons name="store" size={15} color={Colors.primaryGlow} />
+                <Text style={styles.shopsBtnText}>Shops near me</Text>
+              </Pressable>
+            </View>
             {job.materials_items.map((item: any, i: number) => (
-              <View key={i} style={styles.materialRow}>
-                <Text style={styles.materialName}>{item.name}</Text>
-                <Text style={styles.materialQty}>
-                  {item.qty} {item.unit || '×'}
-                </Text>
+              <Pressable key={i} style={styles.materialRow} onPress={() => toggleMaterial(i)}>
+                <MaterialIcons
+                  name={item.got ? 'check-box' : 'check-box-outline-blank'}
+                  size={20}
+                  color={item.got ? Colors.success : Colors.textMuted}
+                />
+                <Text style={[styles.materialName, item.got && styles.materialNameDone]}>{item.name}</Text>
+                <Text style={styles.materialQty}>{item.qty} {item.unit || '×'}</Text>
                 <Text style={styles.materialPrice}>
                   £{(item.estimatedPrice ?? (item.qty * (item.price ?? 0))).toFixed(2)}
                 </Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         ) : null}
       </ScrollView>
+
+      {/* Shops near me modal */}
+      <Modal visible={showShops} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowShops(false)}>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+          <View style={styles.header}>
+            <Pressable onPress={() => setShowShops(false)} hitSlop={8} style={styles.backBtn}>
+              <MaterialIcons name="close" size={22} color={Colors.textSecondary} />
+            </Pressable>
+            <View style={styles.headerCenter}><Text style={styles.headerTitle}>Trade shops near you</Text></View>
+            <View style={{ width: 36 }} />
+          </View>
+          <ScrollView contentContainerStyle={styles.scroll}>
+            {shopsLoading ? (
+              <View style={{ alignItems: 'center', paddingVertical: 50, gap: 12 }}>
+                <ActivityIndicator color={Colors.primaryGlow} size="large" />
+                <Text style={styles.materialQty}>Finding shops near you…</Text>
+              </View>
+            ) : (
+              shops.map((s, i) => (
+                <Pressable key={i} style={styles.shopRow} onPress={() => Linking.openURL(shopMapsUrl(s))}>
+                  <View style={styles.shopIcon}><MaterialIcons name="store" size={18} color={Colors.primaryGlow} /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.materialName}>{s.name}</Text>
+                    <Text style={styles.materialQty}>{s.distanceKm.toFixed(1)} km away · tap for directions</Text>
+                  </View>
+                  <MaterialIcons name="directions" size={20} color={Colors.textMuted} />
+                </Pressable>
+              ))
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       {/* Action Footer */}
       {nextAction ? (
@@ -689,8 +768,21 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderSubtle,
   },
   materialName: { ...Typography.bodyMD, flex: 1 },
+  materialNameDone: { color: Colors.textMuted, textDecorationLine: 'line-through' },
   materialQty: { ...Typography.labelMD, color: Colors.textMuted },
   materialPrice: { ...Typography.dataMD },
+  shopsBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.pill,
+    backgroundColor: Colors.primaryDim, borderWidth: 1, borderColor: Colors.primaryLight,
+  },
+  shopsBtnText: { ...Typography.labelSM, color: Colors.primaryGlow },
+  shopRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.card, borderRadius: Radius.md, padding: 14,
+    borderWidth: 1, borderColor: Colors.border, marginBottom: 8,
+  },
+  shopIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primaryDim, alignItems: 'center', justifyContent: 'center' },
   footer: { flexDirection: 'row', gap: 10, padding: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.bg },
   actionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,

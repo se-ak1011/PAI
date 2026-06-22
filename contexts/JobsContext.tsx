@@ -15,7 +15,7 @@ export interface PrivateJob {
   labour: number;
   materials: number;
   vat: number;
-  materials_items: { name: string; qty: number; price: number; unit?: string }[];
+  materials_items: { name: string; qty: number; price: number; unit?: string; got?: boolean }[];
   receipts: string[];
   progress_photos?: string[];
   invoiced_at: string | null;
