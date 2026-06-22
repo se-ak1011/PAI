@@ -5,6 +5,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { Image } from 'expo-image';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useJobs } from '@/hooks/useJobs';
 import { useTaxPot } from '@/hooks/useTaxPot';
@@ -70,7 +71,15 @@ export default function InvoiceScreen() {
   // Hourly: pre-invoice statuses show as ESTIMATE; invoiced/paid show as INVOICE
   const isHourly = job.job_type === 'hourly';
   const isEstimateMode = isHourly && !isInvoiced && !isPaid;
-  const docLabel = isEstimateMode ? 'ESTIMATE' : 'INVOICE';
+  const docLabel = isEstimateMode ? 'ESTIMATE' : (isInvoiced || isPaid) ? 'INVOICE' : 'QUOTE';
+
+  // Tabular line-item values
+  const subtotal = job.labour + job.materials;
+  const materialItems = (job.materials_items || []) as any[];
+  const labourQty = isHourly ? (job.actual_hours ?? job.estimated_hours ?? 1) : 1;
+  const labourRate = isHourly ? (job.hourly_rate ?? 0) : job.labour;
+  const businessName = user?.business_name || (user as any)?.display_name || 'Your Business';
+  const money = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const labourLineDesc = isHourly
     ? job.actual_hours != null
@@ -189,9 +198,16 @@ export default function InvoiceScreen() {
         <View style={styles.doc}>
           {/* Header */}
           <View style={styles.docHeader}>
-            <View>
-              <Text style={styles.docBrand}>{APP_NAME}</Text>
-              <Text style={styles.docTagline}>for trades</Text>
+            <View style={styles.docHeaderLeft}>
+              {user?.logo_url ? (
+                <Image source={{ uri: user.logo_url }} style={styles.docLogo} contentFit="contain" />
+              ) : (
+                <Text style={styles.docBrand}>{APP_NAME}</Text>
+              )}
+              <Text style={styles.docBusiness}>{businessName}</Text>
+              {user?.city ? (
+                <Text style={styles.docBusinessSub}>{user.city}{user.postcode_area ? `, ${user.postcode_area}` : ''}</Text>
+              ) : null}
             </View>
             <View style={styles.docHeaderRight}>
               <Text style={styles.docInvLabel}>{docLabel}</Text>
@@ -214,37 +230,22 @@ export default function InvoiceScreen() {
 
           <View style={styles.docDivider} />
 
-          {/* From / To */}
-          <View style={styles.fromToRow}>
-            <View style={styles.fromBlock}>
-              <Text style={styles.fromToLabel}>FROM</Text>
-              <Text style={styles.fromName}>{user?.business_name || (user as any)?.display_name || 'Contractor'}</Text>
-              {user?.city ? <Text style={styles.fromDetail}>{user.city}{user.postcode_area ? `, ${user.postcode_area}` : ''}</Text> : null}
-              {(user as any)?.website ? <Text style={styles.fromDetail}>{(user as any).website}</Text> : null}
-              <Text style={styles.fromDetail}>{user?.email}</Text>
-            </View>
-            <View style={styles.toBlock}>
-              <Text style={styles.fromToLabel}>TO</Text>
-              <Text style={styles.fromName}>{job.customer || 'Customer'}</Text>
-            </View>
-          </View>
-
-          {/* Dates */}
+          {/* Customer + dates */}
           <View style={styles.datesRow}>
             <View style={styles.dateItem}>
-              <Text style={styles.dateLabel}>{isEstimateMode ? 'ESTIMATE DATE' : 'INVOICE DATE'}</Text>
+              <Text style={styles.dateLabel}>FOR</Text>
+              <Text style={styles.dateValue}>{job.customer || 'Customer'}</Text>
+            </View>
+            <View style={styles.dateItem}>
+              <Text style={styles.dateLabel}>{docLabel} DATE</Text>
               <Text style={styles.dateValue}>{invoiceDate}</Text>
             </View>
-            {!isEstimateMode ? (
+            {!isEstimateMode && (isInvoiced || isPaid) ? (
               <View style={styles.dateItem}>
-                <Text style={styles.dateLabel}>{isPaid ? 'DATE PAID' : 'DUE DATE'}</Text>
+                <Text style={styles.dateLabel}>{isPaid ? 'DATE PAID' : 'DUE'}</Text>
                 <Text style={[styles.dateValue, !isPaid && styles.dateValueDue]}>{dueDate}</Text>
               </View>
             ) : null}
-            <View style={styles.dateItem}>
-              <Text style={styles.dateLabel}>REF</Text>
-              <Text style={styles.dateValue}>{invNum}</Text>
-            </View>
           </View>
 
           <View style={styles.docDivider} />
@@ -257,56 +258,73 @@ export default function InvoiceScreen() {
             ) : null}
           </View>
 
-          {/* Line items */}
-          <View style={styles.lineItems}>
-            {/* Header row */}
-            <View style={styles.lineHeader}>
-              <Text style={[styles.lineHeaderText, { flex: 1 }]}>ITEM</Text>
-              <Text style={[styles.lineHeaderText, styles.lineHeaderRight]}>AMOUNT</Text>
+          {/* Line items table */}
+          <View style={styles.table}>
+            <View style={styles.tableHead}>
+              <Text style={styles.thDesc}>DESCRIPTION</Text>
+              <Text style={styles.thQty}>QTY</Text>
+              <Text style={styles.thRate}>RATE</Text>
+              <Text style={styles.thAmt}>AMOUNT</Text>
             </View>
 
-            <View style={styles.lineRow}>
-              <Text style={styles.lineItemName}>{labourLineDesc}</Text>
-              <Text style={styles.lineItemAmount}>£{job.labour.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
+            {/* Labour */}
+            <View style={styles.tr}>
+              <Text style={styles.tdDesc}>{isHourly ? 'Labour (hrs)' : 'Labour'}</Text>
+              <Text style={styles.tdQty}>{labourQty}</Text>
+              <Text style={styles.tdRate}>{money(labourRate)}</Text>
+              <Text style={styles.tdAmt}>{money(job.labour)}</Text>
             </View>
 
-            <View style={styles.lineRow}>
-              <Text style={styles.lineItemName}>Materials</Text>
-              <Text style={styles.lineItemAmount}>£{job.materials.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
-            </View>
-
-            {/* Materials breakdown if available */}
-            {job.materials_items && job.materials_items.length > 0 ? (
-              job.materials_items.map((item: any, i: number) => (
-                <View key={i} style={[styles.lineRow, styles.lineRowSub]}>
-                  <Text style={styles.lineSubName}>↳ {item.name} × {item.qty}</Text>
-                  <Text style={styles.lineSubAmount}>
-                    £{(item.estimatedPrice ?? (item.qty * (item.price ?? 0))).toFixed(2)}
-                  </Text>
+            {/* Itemised materials */}
+            {materialItems.map((m, i) => {
+              const amt = m.estimatedPrice ?? (m.qty * (m.price ?? 0));
+              const rate = m.price ?? (m.qty ? amt / m.qty : amt);
+              return (
+                <View key={i} style={styles.tr}>
+                  <Text style={styles.tdDesc}>{m.name}</Text>
+                  <Text style={styles.tdQty}>{m.qty}</Text>
+                  <Text style={styles.tdRate}>{money(Number(rate) || 0)}</Text>
+                  <Text style={styles.tdAmt}>{money(Number(amt) || 0)}</Text>
                 </View>
-              ))
-            ) : null}
+              );
+            })}
 
-            {job.vat > 0 ? (
-              <View style={styles.lineRow}>
-                <Text style={styles.lineItemName}>VAT (20%)</Text>
-                <Text style={styles.lineItemAmount}>£{job.vat.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
+            {/* Single materials row when no itemised list */}
+            {materialItems.length === 0 && job.materials > 0 ? (
+              <View style={styles.tr}>
+                <Text style={styles.tdDesc}>Materials</Text>
+                <Text style={styles.tdQty}>1</Text>
+                <Text style={styles.tdRate}>{money(job.materials)}</Text>
+                <Text style={styles.tdAmt}>{money(job.materials)}</Text>
               </View>
             ) : null}
+          </View>
 
-            {/* Subtotal line */}
-            <View style={styles.subtotalDivider} />
-            <View style={styles.subtotalRow}>
-              <View>
-                <Text style={styles.subtotalLabel}>SUBTOTAL (ex. VAT)</Text>
-              </View>
-              <Text style={styles.subtotalValue}>£{(job.labour + job.materials).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
+          {/* Totals */}
+          <View style={styles.totals}>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalRowLabel}>Subtotal</Text>
+              <Text style={styles.totalRowValue}>{money(subtotal)}</Text>
             </View>
-
-            {/* Total */}
-            <View style={[styles.totalBox, isEstimateMode && styles.totalBoxEstimate]}>
-              <Text style={styles.totalLabel}>{isEstimateMode ? 'ESTIMATE TOTAL' : 'TOTAL DUE'}</Text>
-              <Text style={styles.totalValue}>£{job.total.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
+            {job.vat > 0 ? (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalRowLabel}>VAT (20%)</Text>
+                <Text style={styles.totalRowValue}>{money(job.vat)}</Text>
+              </View>
+            ) : null}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalRowLabel}>Total</Text>
+              <Text style={styles.totalRowValue}>{money(job.total)}</Text>
+            </View>
+            {isPaid ? (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalRowLabel}>Paid</Text>
+                <Text style={styles.totalRowValue}>{money(job.total)}</Text>
+              </View>
+            ) : null}
+            <View style={[styles.balanceBox, isEstimateMode && styles.totalBoxEstimate]}>
+              <Text style={styles.balanceLabel}>{isEstimateMode ? 'ESTIMATE TOTAL' : 'Balance Due'}</Text>
+              <Text style={styles.balanceValue}>{money(isPaid ? 0 : job.total)}</Text>
             </View>
           </View>
 
@@ -410,6 +428,36 @@ const styles = StyleSheet.create({
   },
   docBrand: { fontSize: 28, fontWeight: '900', color: Colors.primaryGlow, letterSpacing: -1 },
   docTagline: { ...Typography.labelSM, color: Colors.textMuted, marginTop: 2 },
+  docHeaderLeft: { flex: 1, gap: 4 },
+  docLogo: { width: 96, height: 48, alignSelf: 'flex-start' },
+  docBusiness: { ...Typography.dataMD, color: Colors.textPrimary },
+  docBusinessSub: { ...Typography.labelSM, color: Colors.textSecondary },
+
+  // Line-item table
+  table: { paddingHorizontal: 24, paddingTop: 16 },
+  tableHead: { flexDirection: 'row', paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  thDesc: { ...Typography.labelXS, color: Colors.textMuted, flex: 1 },
+  thQty: { ...Typography.labelXS, color: Colors.textMuted, width: 38, textAlign: 'right' },
+  thRate: { ...Typography.labelXS, color: Colors.textMuted, width: 72, textAlign: 'right' },
+  thAmt: { ...Typography.labelXS, color: Colors.textMuted, width: 80, textAlign: 'right' },
+  tr: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle },
+  tdDesc: { ...Typography.bodyMD, flex: 1, paddingRight: 6 },
+  tdQty: { ...Typography.labelMD, color: Colors.textSecondary, width: 38, textAlign: 'right' },
+  tdRate: { ...Typography.labelMD, color: Colors.textSecondary, width: 72, textAlign: 'right' },
+  tdAmt: { ...Typography.dataMD, width: 80, textAlign: 'right' },
+
+  // Totals
+  totals: { paddingHorizontal: 24, paddingTop: 14, gap: 8 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  totalRowLabel: { ...Typography.labelMD, color: Colors.textSecondary },
+  totalRowValue: { ...Typography.dataMD },
+  balanceBox: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: Colors.primaryDim, borderRadius: Radius.md,
+    padding: 14, marginTop: 6, borderWidth: 1, borderColor: Colors.primary,
+  },
+  balanceLabel: { ...Typography.labelMD, fontWeight: '700', color: Colors.primaryGlow },
+  balanceValue: { fontSize: 24, fontWeight: '800', color: Colors.primaryGlow },
   docHeaderRight: { alignItems: 'flex-end', gap: 4 },
   docInvLabel: { ...Typography.labelXS, color: Colors.textMuted },
   docInvNumber: { ...Typography.dataMD, color: Colors.textPrimary },
