@@ -1,6 +1,7 @@
 /**
  * Expo config plugin that injects Pod build settings into the generated Podfile.
- * This keeps Pod deployment target and C/C++ standards consistent for Xcode 16.
+ * This keeps Pod deployment target and C/C++ standards consistent across Xcode
+ * versions (including Xcode 26, which needs fmt's consteval checks disabled).
  *
  * Strategy: if the Podfile already has a `post_install` block (typical for
  * Expo-generated Podfiles), inject our settings at the top of that block.
@@ -27,6 +28,14 @@ const INJECT_LINES = `  ${INJECT_MARKER}
       config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
       config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
       config.build_settings['CODE_SIGNING_IDENTITY'] = ''
+      # Xcode 26 / newer clang rejects fmt's consteval format-string checks
+      # ("call to consteval function ... is not a constant expression"). Turn off
+      # fmt's compile-time checking (it falls back to runtime checks) across all
+      # pods so fmt and anything that includes it (e.g. Folly) compile cleanly.
+      existing_defs = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || ['$(inherited)']
+      existing_defs = [existing_defs] unless existing_defs.is_a?(Array)
+      existing_defs << 'FMT_USE_CONSTEVAL=0' unless existing_defs.include?('FMT_USE_CONSTEVAL=0')
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = existing_defs
     end
   end
 `;
