@@ -19,6 +19,8 @@ import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
 import { TRADE_CATEGORIES, SUBSCRIPTION, getContractorProfileUrl } from '@/constants/config';
 import { useRole } from '@/hooks/useRole';
 import { useJobs } from '@/hooks/useJobs';
+import { usePortfolio } from '@/hooks/usePortfolio';
+import { getJobPhotoUrls } from '@/services/photoService';
 import { getSupabaseClient } from '@/template/core';
 // MOCK_REVIEWS removed — reviews now fetched from Supabase below
 import { MaterialIcons } from '@expo/vector-icons';
@@ -589,6 +591,9 @@ const settStyles = StyleSheet.create({
 function ContractorProfileTab() {
   const { user, updateProfile } = useAuth();
   const { showAlert } = useAlert();
+  const { privateJobs } = useJobs();
+  const { projects, createProjectFromCompletedJob, updateProject } = usePortfolio();
+  const [portfolioUrls, setPortfolioUrls] = React.useState<Record<string, string>>({});
   const [showEdit, setShowEdit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -610,6 +615,54 @@ function ContractorProfileTab() {
   const avgRating = reviews.length > 0
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
     : 0;
+
+  const portfolioPhotoKey = projects.map(project => project.photos.map(photo => photo.path).join('|')).join(',');
+
+  React.useEffect(() => {
+    const paths = Array.from(new Set(projects.flatMap(project => project.photos.map(photo => photo.path))));
+    if (paths.length === 0) { setPortfolioUrls({}); return; }
+    let active = true;
+    getJobPhotoUrls(paths).then(urls => {
+      if (!active) return;
+      const next: Record<string, string> = {};
+      paths.forEach((path, index) => { if (urls[index]) next[path] = urls[index] as string; });
+      setPortfolioUrls(next);
+    });
+    return () => { active = false; };
+  }, [portfolioPhotoKey, projects]);
+
+  const completedJobsWithPhotos = privateJobs.filter(job => job.status === 'paid' && (job.progress_photos ?? []).length > 0);
+
+  const handleCreatePortfolio = () => {
+    showAlert('Create Portfolio Project', 'Choose where the project photos should come from.', [
+      {
+        text: 'From Completed Job',
+        onPress: () => {
+          if (completedJobsWithPhotos.length === 0) {
+            showAlert('No completed jobs', 'Complete a job with at least one progress photo to create a verified Portfolio Project.');
+            return;
+          }
+          const job = completedJobsWithPhotos[0];
+          createProjectFromCompletedJob(job).then(project => {
+            if (project) showAlert('Draft created', `Created a verified portfolio draft for ${job.title}. Select photos, cover, order, and publish when ready.`);
+          });
+        },
+      },
+      { text: 'From Photo Library', onPress: () => showAlert('Photo Library', 'Manual portfolio projects are still supported; photo library upload will use the existing gallery picker when storage integration is enabled. Manual projects will not show the Verified badge.') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const movePortfolioPhoto = (projectId: string, fromIndex: number, direction: -1 | 1) => {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+    const toIndex = fromIndex + direction;
+    if (toIndex < 0 || toIndex >= project.photos.length) return;
+    const nextPhotos = [...project.photos];
+    const [photo] = nextPhotos.splice(fromIndex, 1);
+    nextPhotos.splice(toIndex, 0, photo);
+    updateProject(projectId, { photos: nextPhotos.map((item, sort_order) => ({ ...item, sort_order })) });
+  };
 
   const handleShareProfile = async () => {
     if (!user?.id) return;
@@ -834,24 +887,60 @@ function ContractorProfileTab() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Portfolio</Text>
-            <Pressable
-              style={styles.addPhotoBtn}
-              onPress={() => showAlert('Photo Upload', 'Portfolio photo upload coming with storage integration.')}
-            >
+            <Pressable style={styles.addPhotoBtn} onPress={handleCreatePortfolio}>
               <MaterialIcons name="add-photo-alternate" size={15} color={Colors.primaryGlow} />
-              <Text style={styles.addPhotoBtnText}>Add photo</Text>
+              <Text style={styles.addPhotoBtnText}>New project</Text>
             </Pressable>
           </View>
-          <Pressable
-            style={styles.portfolioEmpty}
-            onPress={() => showAlert('Photo Upload', 'Portfolio photo upload coming soon.')}
-          >
-            <MaterialIcons name="add-photo-alternate" size={28} color={Colors.textMuted} />
-            <Text style={styles.portfolioEmptyText}>No portfolio photos yet</Text>
-            <Text style={styles.portfolioEmptySub}>
-              Add photos to showcase your best work on your public profile.
-            </Text>
-          </Pressable>
+          {projects.length > 0 ? (
+            <View style={{ gap: 12 }}>
+              {projects.map(project => (
+                <View key={project.id} style={styles.portfolioProjectCard}>
+                  <View style={styles.portfolioProjectHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.portfolioProjectTitle}>{project.title}</Text>
+                      <Text style={styles.portfolioHint}>{[project.trade, project.location].filter(Boolean).join(' • ') || (project.source === 'completed_job' ? 'Completed PAI job' : 'Manual upload')}</Text>
+                    </View>
+                    {project.verified ? (
+                      <View style={styles.verifiedBadge}>
+                        <MaterialIcons name="check" size={12} color={Colors.success} />
+                        <Text style={styles.verifiedBadgeText}>Verified through PAI</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={styles.portfolioDescription}>{project.description}</Text>
+                  <View style={styles.portfolioGrid}>
+                    {project.photos.map((photo, index) => (
+                      <Pressable
+                        key={photo.path}
+                        style={[styles.portfolioPhotoTile, project.cover_photo_path === photo.path && styles.portfolioCoverTile]}
+                        onPress={() => updateProject(project.id, { cover_photo_path: photo.path })}
+                      >
+                        {portfolioUrls[photo.path] ? (
+                          <Image source={{ uri: portfolioUrls[photo.path] }} style={styles.portfolioImg} contentFit="cover" />
+                        ) : (
+                          <View style={styles.portfolioImgPlaceholder}><MaterialIcons name="image" size={18} color={Colors.textMuted} /></View>
+                        )}
+                        {project.cover_photo_path === photo.path ? <Text style={styles.coverLabel}>Cover</Text> : null}
+                        <View style={styles.reorderControls}>
+                          <Pressable onPress={() => movePortfolioPhoto(project.id, index, -1)}><MaterialIcons name="arrow-back" size={14} color={Colors.textPrimary} /></Pressable>
+                          <MaterialIcons name="drag-indicator" size={14} color={Colors.textPrimary} />
+                          <Pressable onPress={() => movePortfolioPhoto(project.id, index, 1)}><MaterialIcons name="arrow-forward" size={14} color={Colors.textPrimary} /></Pressable>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text style={styles.portfolioHint}>Tap a photo to set the cover. Use the drag handles to reorder before publishing.</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Pressable style={styles.portfolioEmpty} onPress={handleCreatePortfolio}>
+              <MaterialIcons name="add-photo-alternate" size={28} color={Colors.textMuted} />
+              <Text style={styles.portfolioEmptyText}>No portfolio projects yet</Text>
+              <Text style={styles.portfolioEmptySub}>Create one from a completed job or from your phone gallery.</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Website / Social */}
@@ -1213,8 +1302,36 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.primaryLight,
   },
   addPhotoBtnText: { ...Typography.labelSM, color: Colors.primaryGlow, fontWeight: '600' },
-  portfolioGrid: { flexDirection: 'row', gap: 8 },
-  portfolioImg: { flex: 1, height: 100, borderRadius: Radius.md, overflow: 'hidden' },
+  portfolioGrid: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  portfolioImg: { width: '100%', height: '100%', borderRadius: Radius.md, overflow: 'hidden' },
+  portfolioProjectCard: {
+    backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
+    borderColor: Colors.border, padding: 14, gap: 10,
+  },
+  portfolioProjectHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  portfolioProjectTitle: { ...Typography.headingMD, color: Colors.textPrimary },
+  portfolioDescription: { ...Typography.bodySM, color: Colors.textSecondary, lineHeight: 19 },
+  portfolioPhotoTile: {
+    width: 96, height: 108, borderRadius: Radius.md, overflow: 'hidden',
+    backgroundColor: Colors.cardAlt, borderWidth: 1, borderColor: Colors.border,
+  },
+  portfolioCoverTile: { borderColor: Colors.primaryGlow, borderWidth: 2 },
+  portfolioImgPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  coverLabel: {
+    position: 'absolute', top: 5, left: 5, ...Typography.labelXS, color: Colors.textInverse,
+    backgroundColor: Colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.pill,
+    overflow: 'hidden',
+  },
+  reorderControls: {
+    position: 'absolute', left: 6, right: 6, bottom: 6, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 6, paddingVertical: 4,
+    borderRadius: Radius.pill, backgroundColor: 'rgba(255,255,255,0.82)',
+  },
+  verifiedBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5,
+    borderRadius: Radius.pill, backgroundColor: Colors.successDim, borderWidth: 1, borderColor: Colors.success + '55',
+  },
+  verifiedBadgeText: { ...Typography.labelXS, color: Colors.success },
   portfolioOverlay: {
     position: 'absolute', bottom: 6, right: 6,
     width: 24, height: 24, borderRadius: 12,

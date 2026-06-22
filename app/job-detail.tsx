@@ -17,6 +17,7 @@ import { useAlert } from '@/template/ui';
 import { JOB_STATUS_ACTIONS, PLATFORM_PRINCIPLES } from '@/constants/config';
 import { CustomerReviewModal } from '@/components/feature/CustomerReviewModal';
 import { useReliability } from '@/hooks/useReliability';
+import { usePortfolio } from '@/hooks/usePortfolio';
 import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -48,6 +49,7 @@ export default function JobDetailScreen() {
   const { privateJobs, updatePrivateJob, deletePrivateJob } = useJobs();
   const { addPAIJobIncome } = useTaxPot();
   const { user } = useAuth();
+  const { createProjectFromCompletedJob } = usePortfolio();
   const { showAlert } = useAlert();
 
   const job = privateJobs.find(j => j.id === id);
@@ -207,6 +209,31 @@ export default function JobDetailScreen() {
     ]);
   };
 
+  const handleCreatePortfolioProject = async () => {
+    const project = await createProjectFromCompletedJob(job);
+    if (!project) {
+      haptics.error();
+      showAlert('Portfolio project', 'Could not create a portfolio project from this job.');
+      return;
+    }
+    haptics.success();
+    showAlert(
+      'Portfolio draft created',
+      'All job photos were linked to a new verified Portfolio Project. Open your Portfolio to choose photos, set the cover, reorder, and edit the AI-generated description before publishing.',
+      [
+        { text: 'Later', style: 'cancel' },
+        { text: 'Open Portfolio', onPress: () => router.push('/(tabs)/profile') },
+      ],
+    );
+  };
+
+  const handlePortfolioPrompt = () => {
+    showAlert('Add this project to your Portfolio?', 'Create a verified Portfolio Project from this completed job using its existing photos. No duplicate uploads are needed.', [
+      { text: 'Not now', style: 'cancel' },
+      { text: 'Yes', onPress: handleCreatePortfolioProject },
+    ]);
+  };
+
   const handleDelete = () => {
     showAlert('Delete Job', 'This will permanently delete this job. Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
@@ -336,6 +363,22 @@ export default function JobDetailScreen() {
             </>
           )}
         </View>
+
+        {/* Completed job portfolio prompt */}
+        {job.status === 'paid' && photoPaths.length > 0 ? (
+          <View style={styles.portfolioPromptCard}>
+            <View style={styles.portfolioPromptIcon}>
+              <MaterialIcons name="workspace-premium" size={20} color={Colors.primaryGlow} />
+            </View>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={styles.portfolioPromptTitle}>Add this project to your Portfolio?</Text>
+              <Text style={styles.portfolioPromptText}>Use these job photos to create a verified project draft without uploading them again.</Text>
+            </View>
+            <Pressable style={styles.portfolioPromptBtn} onPress={handlePortfolioPrompt}>
+              <Text style={styles.portfolioPromptBtnText}>Yes</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* Client reliability — visible only for marketplace-sourced jobs */}
         {job.source_job_post_id && reliabilityScore ? (
@@ -614,6 +657,22 @@ const styles = StyleSheet.create({
   photoImg: { width: '100%', height: '100%' },
   photoLoading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   photoHint: { ...Typography.labelXS, color: Colors.textMuted },
+  portfolioPromptCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
+    borderColor: Colors.primaryLight, padding: 14,
+  },
+  portfolioPromptIcon: {
+    width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.primaryDim,
+  },
+  portfolioPromptTitle: { ...Typography.labelMD, color: Colors.textPrimary },
+  portfolioPromptText: { ...Typography.bodySM, color: Colors.textSecondary, lineHeight: 18 },
+  portfolioPromptBtn: {
+    paddingHorizontal: 14, paddingVertical: 9, borderRadius: Radius.pill,
+    backgroundColor: Colors.primary,
+  },
+  portfolioPromptBtnText: { ...Typography.btnSM, color: Colors.textInverse },
   breakdownCard: {
     backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
     borderColor: Colors.border, padding: 16, gap: 10,
