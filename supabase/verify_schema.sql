@@ -55,6 +55,32 @@ pol as (
   select count(*) n from pg_policies
   where schemaname = 'public'
     and tablename in (select name from expected_tables)
+),
+-- Later migrations (20260614+) — the columns/tables that were missing from the
+-- old apply_all_migrations.sql and broke job/invoice/expense saves.
+col_hourly as (
+  select count(*) n from information_schema.columns
+  where table_schema = 'public' and table_name = 'private_jobs' and column_name = 'job_type'
+),
+col_progress as (
+  select count(*) n from information_schema.columns
+  where table_schema = 'public' and table_name = 'private_jobs' and column_name = 'progress_photos'
+),
+col_logo as (
+  select count(*) n from information_schema.columns
+  where table_schema = 'public' and table_name = 'user_profiles' and column_name = 'logo_url'
+),
+tbl_expenses as (
+  select count(*) n from information_schema.tables
+  where table_schema = 'public' and table_name = 'expenses'
+),
+tbl_portfolio as (
+  select count(*) n from information_schema.tables
+  where table_schema = 'public' and table_name = 'portfolio_projects'
+),
+buckets as (
+  select count(*) n from storage.buckets
+  where id in ('job-photos', 'receipts', 'portfolio')
 )
 select * from (
   select 1 as ord,
@@ -91,6 +117,36 @@ select * from (
          '(bonus) RLS policies present',
          (select n from pol)::text || ' policies',
          case when (select n from pol) > 0 then 'PASS' else 'FAIL' end
+  union all
+  select 8,
+         '6. private_jobs.job_type (hourly_jobs migration)',
+         (select n from col_hourly)::text || ' / 1',
+         case when (select n from col_hourly) = 1 then 'PASS' else 'FAIL — re-run apply_all_migrations.sql' end
+  union all
+  select 9,
+         '7. private_jobs.progress_photos',
+         (select n from col_progress)::text || ' / 1',
+         case when (select n from col_progress) = 1 then 'PASS' else 'FAIL — re-run apply_all_migrations.sql' end
+  union all
+  select 10,
+         '8. expenses table (Receipt Vault)',
+         (select n from tbl_expenses)::text || ' / 1',
+         case when (select n from tbl_expenses) = 1 then 'PASS' else 'FAIL — re-run apply_all_migrations.sql' end
+  union all
+  select 11,
+         '9. portfolio_projects table',
+         (select n from tbl_portfolio)::text || ' / 1',
+         case when (select n from tbl_portfolio) = 1 then 'PASS' else 'FAIL — re-run apply_all_migrations.sql' end
+  union all
+  select 12,
+         '10. user_profiles.logo_url (branding)',
+         (select n from col_logo)::text || ' / 1',
+         case when (select n from col_logo) = 1 then 'PASS' else 'FAIL — re-run apply_all_migrations.sql' end
+  union all
+  select 13,
+         '11. storage buckets (job-photos/receipts/portfolio)',
+         (select n from buckets)::text || ' / 3',
+         case when (select n from buckets) = 3 then 'PASS' else 'FAIL — re-run apply_all_migrations.sql' end
 ) s
 order by ord;
 

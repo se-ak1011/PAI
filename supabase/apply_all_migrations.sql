@@ -1,7 +1,23 @@
 -- ============================================================================
 -- apply_all_migrations.sql — full PAI schema, idempotent, run-once in SQL editor
--- Concatenation of supabase/migrations/2026061300000{1..4} in order.
--- Safe to re-run (create if not exists / create or replace / drop policy if exists).
+-- Concatenation of EVERY migration in supabase/migrations/ in order:
+--   20260613000001_initial_schema
+--   20260613000002_customer_reliability_scores
+--   20260613000003_delete_own_account
+--   20260613000004_rls_policies
+--   20260614000001_hourly_jobs                 (private_jobs.job_type etc.)
+--   20260622000001_job_progress_photos         (private_jobs.progress_photos + storage)
+--   20260622000002_expenses_receipt_vault      (expenses table + storage)
+--   20260622000003_portfolio_projects          (portfolio_projects table)
+--   20260622000004_public_portfolio            (public read + portfolio storage)
+--   20260622000005_branding_logo               (user_profiles.logo_url)
+--   + storage bucket creation (job-photos, receipts, portfolio)
+-- Safe to re-run (create if not exists / create or replace / drop policy if exists /
+-- add column if not exists / on conflict do nothing).
+--
+-- ⚠️ If your project was created from an OLDER copy of this file (one that stopped
+-- at ...0004), it is MISSING the hourly_jobs columns — which makes EVERY job/invoice
+-- insert fail. Re-running this whole file fixes that. It is additive and safe.
 -- ============================================================================
 
 -- ==================== 20260613000001_initial_schema ====================
@@ -542,4 +558,190 @@ create policy disputes_select_party
 create policy disputes_insert_party
   on public.disputes for insert
   with check (auth.uid() = contractor_id or auth.uid() = customer_id);
+
+-- ==================== 20260614000001_hourly_jobs ====================
+-- Adds job_type, hourly_rate, estimated_hours, actual_hours to private_jobs so
+-- contractors can create time-and-materials estimates and invoices.
+-- ⚠️ These columns are inserted by CreateJobModal AND CreateInvoiceModal — without
+-- them, every job/invoice save fails (this is the #1 cause of "nothing saves").
+alter table public.private_jobs
+  add column if not exists job_type        text    not null default 'fixed'
+    check (job_type in ('fixed', 'hourly')),
+  add column if not exists hourly_rate     numeric,
+  add column if not exists estimated_hours numeric,
+  add column if not exists actual_hours    numeric;
+
+-- ==================== 20260622000001_job_progress_photos ====================
+-- Column on private_jobs holding uploaded photo object paths + storage RLS for
+-- the PRIVATE `job-photos` bucket. Path convention: {auth.uid()}/{job_id}/{file}.
+alter table public.private_jobs
+  add column if not exists progress_photos text[] not null default '{}';
+
+drop policy if exists "Job photos: owner can upload" on storage.objects;
+create policy "Job photos: owner can upload"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'job-photos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Job photos: owner can read" on storage.objects;
+create policy "Job photos: owner can read"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'job-photos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Job photos: owner can delete" on storage.objects;
+create policy "Job photos: owner can delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'job-photos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ==================== 20260622000002_expenses_receipt_vault ====================
+-- expenses table (Receipt Vault / claimable expenses) + RLS, plus storage policies
+-- for the PRIVATE `receipts` bucket. Path convention: {auth.uid()}/{timestamp}.{ext}
+create table if not exists public.expenses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  job_id uuid references public.private_jobs(id) on delete set null,
+  vendor text,
+  amount numeric not null default 0,
+  category text,
+  split text not null default 'business',
+  business_pct int,
+  confidence numeric,
+  needs_review boolean not null default false,
+  receipt_path text,
+  note text,
+  spent_on date,
+  created_at timestamptz not null default now()
+);
+
+alter table public.expenses enable row level security;
+
+drop policy if exists "Expenses: owner all" on public.expenses;
+create policy "Expenses: owner all"
+  on public.expenses for all to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists "Receipts: owner can upload" on storage.objects;
+create policy "Receipts: owner can upload"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'receipts'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Receipts: owner can read" on storage.objects;
+create policy "Receipts: owner can read"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'receipts'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Receipts: owner can delete" on storage.objects;
+create policy "Receipts: owner can delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'receipts'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ==================== 20260622000003_portfolio_projects ====================
+-- Portfolio projects with completed-job photo references.
+create table if not exists public.portfolio_projects (
+  id uuid primary key default gen_random_uuid(),
+  contractor_id uuid not null references auth.users(id) on delete cascade,
+  source text not null default 'photo_library' check (source in ('completed_job', 'photo_library')),
+  source_job_id uuid references public.private_jobs(id) on delete set null,
+  title text not null,
+  trade text,
+  location text,
+  description text,
+  photos jsonb not null default '[]'::jsonb,
+  cover_photo_path text,
+  verified boolean not null default false,
+  published boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint completed_job_projects_are_verified check (source <> 'completed_job' or verified = true),
+  constraint manual_projects_are_not_verified check (source <> 'photo_library' or verified = false)
+);
+
+alter table public.portfolio_projects enable row level security;
+
+drop policy if exists "Portfolio projects: owner can read" on public.portfolio_projects;
+create policy "Portfolio projects: owner can read"
+  on public.portfolio_projects for select
+  using (auth.uid() = contractor_id);
+
+drop policy if exists "Portfolio projects: owner can insert" on public.portfolio_projects;
+create policy "Portfolio projects: owner can insert"
+  on public.portfolio_projects for insert
+  with check (auth.uid() = contractor_id);
+
+drop policy if exists "Portfolio projects: owner can update" on public.portfolio_projects;
+create policy "Portfolio projects: owner can update"
+  on public.portfolio_projects for update
+  using (auth.uid() = contractor_id)
+  with check (auth.uid() = contractor_id);
+
+drop policy if exists "Portfolio projects: owner can delete" on public.portfolio_projects;
+create policy "Portfolio projects: owner can delete"
+  on public.portfolio_projects for delete
+  using (auth.uid() = contractor_id);
+
+-- ==================== 20260622000004_public_portfolio ====================
+-- Published portfolio projects are publicly viewable; owners write to the PUBLIC
+-- `portfolio` storage bucket. Path convention: {auth.uid()}/{project_id}/{n}.jpg
+drop policy if exists "Portfolio projects: public read published" on public.portfolio_projects;
+create policy "Portfolio projects: public read published"
+  on public.portfolio_projects for select
+  using (published = true);
+
+drop policy if exists "Portfolio media: owner can upload" on storage.objects;
+create policy "Portfolio media: owner can upload"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'portfolio'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Portfolio media: owner can update" on storage.objects;
+create policy "Portfolio media: owner can update"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'portfolio'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Portfolio media: owner can delete" on storage.objects;
+create policy "Portfolio media: owner can delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'portfolio'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ==================== 20260622000005_branding_logo ====================
+-- Optional business logo for contractors (shown on quotes/invoices + public profile).
+alter table public.user_profiles
+  add column if not exists logo_url text;
+
+-- ==================== storage buckets ====================
+-- Create the buckets the app uploads to, so storage works without manual dashboard
+-- steps. `job-photos` + `receipts` are PRIVATE (owner-scoped reads via the policies
+-- above); `portfolio` is PUBLIC (anyone can read published portfolio media + logos).
+insert into storage.buckets (id, name, public)
+values
+  ('job-photos', 'job-photos', false),
+  ('receipts',   'receipts',   false),
+  ('portfolio',  'portfolio',  true)
+on conflict (id) do nothing;
 

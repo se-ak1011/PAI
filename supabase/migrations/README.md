@@ -18,6 +18,21 @@ onto an existing one.
 | `20260613000002_customer_reliability_scores.sql` | `customer_reliability_scores` aggregate **view** |
 | `20260613000003_delete_own_account.sql` | `delete_own_account()` SECURITY DEFINER **RPC** |
 | `20260613000004_rls_policies.sql` | RLS enablement + policies |
+| `20260614000001_hourly_jobs.sql` | `private_jobs.job_type / hourly_rate / estimated_hours / actual_hours` |
+| `20260622000001_job_progress_photos.sql` | `private_jobs.progress_photos` + `job-photos` storage policies |
+| `20260622000002_expenses_receipt_vault.sql` | `expenses` table + `receipts` storage policies |
+| `20260622000003_portfolio_projects.sql` | `portfolio_projects` table + owner RLS |
+| `20260622000004_public_portfolio.sql` | public read of published projects + `portfolio` storage policies |
+| `20260622000005_branding_logo.sql` | `user_profiles.logo_url` |
+
+> **Easiest path:** run `supabase/apply_all_migrations.sql` — it concatenates every
+> file above (idempotent) **and** creates the `job-photos`, `receipts`, and
+> `portfolio` storage buckets. Then run `supabase/verify_schema.sql` — every row
+> should read **PASS**. If any reads FAIL, re-run `apply_all_migrations.sql`.
+>
+> ⚠️ An older `apply_all_migrations.sql` stopped at `…0004`, so projects created
+> from it are **missing the `private_jobs.job_type` column** — which makes every
+> job/invoice save fail silently. Re-running the current file fixes that.
 
 ## What was traced, and where
 

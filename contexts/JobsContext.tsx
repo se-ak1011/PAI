@@ -197,22 +197,30 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   }
 
   const addPrivateJob = async (job: Omit<PrivateJob, 'id' | 'created_at'>) => {
-    if (!user) return;
+    if (!user) throw new Error('You must be signed in to save a job.');
     const { data, error } = await supabase
       .from('private_jobs')
       .insert({ ...job, contractor_id: user.id })
       .select()
       .single();
-    if (!error && data) {
+    // Surface the real DB error instead of silently faking success. A swallowed
+    // error here is what let "Invoice Created" show while nothing was saved.
+    if (error) {
+      console.warn('[JobsContext] addPrivateJob failed:', error.message);
+      throw new Error(error.message);
+    }
+    if (data) {
       setPrivateJobs(prev => [{ ...data, materials_items: data.materials_items || [], receipts: data.receipts || [], progress_photos: data.progress_photos || [], job_type: data.job_type ?? 'fixed', hourly_rate: data.hourly_rate ?? null, estimated_hours: data.estimated_hours ?? null, actual_hours: data.actual_hours ?? null }, ...prev]);
     }
   };
 
   const updatePrivateJob = async (id: string, updates: Partial<PrivateJob>) => {
     const { error } = await supabase.from('private_jobs').update(updates).eq('id', id);
-    if (!error) {
-      setPrivateJobs(prev => prev.map(j => j.id === id ? { ...j, ...updates } : j));
+    if (error) {
+      console.warn('[JobsContext] updatePrivateJob failed:', error.message);
+      throw new Error(error.message);
     }
+    setPrivateJobs(prev => prev.map(j => j.id === id ? { ...j, ...updates } : j));
   };
 
   const deletePrivateJob = async (id: string) => {
@@ -223,13 +231,17 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   };
 
   const addJobPost = async (post: Omit<JobPost, 'id' | 'created_at' | 'applications'>) => {
-    if (!user) return;
+    if (!user) throw new Error('You must be signed in to post a job.');
     const { data, error } = await supabase
       .from('job_posts')
       .insert({ ...post, client_id: user.id })
       .select()
       .single();
-    if (!error && data) {
+    if (error) {
+      console.warn('[JobsContext] addJobPost failed:', error.message);
+      throw new Error(error.message);
+    }
+    if (data) {
       setJobPosts(prev => [{
         ...data,
         client_name: user.display_name,

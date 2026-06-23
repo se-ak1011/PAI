@@ -28,7 +28,10 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
   const [labourStr, setLabourStr] = useState('');
   const [materialsStr, setMaterialsStr] = useState('');
   const [includeVat, setIncludeVat] = useState(false);
-  const [category, setCategory] = useState(INCOME_CATEGORIES[0]);
+  // Trades/categories — a job can span more than one (e.g. plumbing + tiling).
+  const [categories, setCategories] = useState<string[]>([INCOME_CATEGORIES[0]]);
+  const toggleCategory = (c: string) =>
+    setCategories(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
   const [saving, setSaving] = useState(false);
   // Hourly fields
   const [jobType, setJobType] = useState<'fixed' | 'hourly'>('fixed');
@@ -52,7 +55,7 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
     setLabourStr('');
     setMaterialsStr('');
     setIncludeVat(false);
-    setCategory(INCOME_CATEGORIES[0]);
+    setCategories([INCOME_CATEGORIES[0]]);
     setSaving(false);
     setJobType('fixed');
     setHourlyRateStr('');
@@ -79,26 +82,33 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
     setSaving(true);
     const today = new Date().toISOString().split('T')[0];
 
-    await addPrivateJob({
-      contractor_id: user?.id || '',
-      title: jobTitle.trim(),
-      customer: customerName.trim(),
-      description: description.trim(),
-      status: 'invoiced',
-      total,
-      labour,
-      materials,
-      vat,
-      materials_items: [],
-      receipts: [],
-      invoiced_at: today,
-      paid_at: null,
-      source_job_post_id: null,
-      job_type: jobType,
-      hourly_rate: jobType === 'hourly' ? hourlyRate : null,
-      estimated_hours: jobType === 'hourly' ? actualHours : null,
-      actual_hours: jobType === 'hourly' ? actualHours : null,
-    });
+    try {
+      await addPrivateJob({
+        contractor_id: user?.id || '',
+        title: jobTitle.trim(),
+        customer: customerName.trim(),
+        description: description.trim(),
+        status: 'invoiced',
+        total,
+        labour,
+        materials,
+        vat,
+        materials_items: [],
+        receipts: [],
+        invoiced_at: today,
+        paid_at: null,
+        source_job_post_id: null,
+        job_type: jobType,
+        hourly_rate: jobType === 'hourly' ? hourlyRate : null,
+        estimated_hours: jobType === 'hourly' ? actualHours : null,
+        actual_hours: jobType === 'hourly' ? actualHours : null,
+      });
+    } catch (e: any) {
+      // Real save failure — tell the user instead of faking success.
+      setSaving(false);
+      showAlert('Could not save invoice', e?.message || 'Something went wrong saving the invoice. Please try again.');
+      return;
+    }
 
     setSaving(false);
     reset();
@@ -223,17 +233,17 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
               />
             </View>
 
-            {/* Category */}
+            {/* Trade(s) — multi-select, a job can span trades */}
             <View style={styles.inputWrap}>
-              <Text style={styles.inputLabel}>Category</Text>
+              <Text style={styles.inputLabel}>Trade(s) — select all that apply</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryRow}>
                 {INCOME_CATEGORIES.map(cat => (
                   <Pressable
                     key={cat}
-                    style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
-                    onPress={() => setCategory(cat)}
+                    style={[styles.categoryChip, categories.includes(cat) && styles.categoryChipActive]}
+                    onPress={() => toggleCategory(cat)}
                   >
-                    <Text style={[styles.categoryText, category === cat && styles.categoryTextActive]}>{cat}</Text>
+                    <Text style={[styles.categoryText, categories.includes(cat) && styles.categoryTextActive]}>{cat}</Text>
                   </Pressable>
                 ))}
               </ScrollView>

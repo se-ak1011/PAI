@@ -190,26 +190,34 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
     }
 
     setSaving(true);
-    await addPrivateJob({
-      contractor_id: user.id,
-      title: jobTitle.trim().slice(0, 200),
-      customer: (customer || 'New Customer').trim().slice(0, 100),
-      description: (aiResult?.scope || description).trim().slice(0, 5000),
-      status: 'draft',
-      total: safeTotal,
-      labour: safeLabour,
-      materials: safeMaterials,
-      vat: safeVat,
-      materials_items: safeMaterialItems.map(m => ({ name: m.name, qty: m.qty, price: m.estimatedPrice, unit: m.unit })),
-      receipts: [],
-      invoiced_at: null,
-      paid_at: null,
-      source_job_post_id: null,
-      job_type: jobType,
-      hourly_rate: jobType === 'hourly' ? hourlyRate : null,
-      estimated_hours: jobType === 'hourly' ? estimatedHours : null,
-      actual_hours: null,
-    });
+    try {
+      await addPrivateJob({
+        contractor_id: user.id,
+        title: jobTitle.trim().slice(0, 200),
+        customer: (customer || 'New Customer').trim().slice(0, 100),
+        description: (aiResult?.scope || description).trim().slice(0, 5000),
+        status: 'draft',
+        total: safeTotal,
+        labour: safeLabour,
+        materials: safeMaterials,
+        vat: safeVat,
+        materials_items: safeMaterialItems.map(m => ({ name: m.name, qty: m.qty, price: m.estimatedPrice, unit: m.unit })),
+        receipts: [],
+        invoiced_at: null,
+        paid_at: null,
+        source_job_post_id: null,
+        job_type: jobType,
+        hourly_rate: jobType === 'hourly' ? hourlyRate : null,
+        estimated_hours: jobType === 'hourly' ? estimatedHours : null,
+        actual_hours: null,
+      });
+    } catch (e: any) {
+      // Surface the real failure instead of closing as if it saved.
+      setSaving(false);
+      haptics.error();
+      showAlert('Could not save job', e?.message || 'Something went wrong saving the job. Please try again.');
+      return;
+    }
     setSaving(false);
     haptics.success();
     handleClose();

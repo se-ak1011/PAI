@@ -53,19 +53,25 @@ export function PostJobModal({ visible, onClose }: PostJobModalProps) {
     }
 
     setSaving(true);
-    await addJobPost({
-      client_id: user?.id || '',
-      title: title.trim(),
-      description: description.trim(),
-      trade,
-      status: 'open',
-      budget: parseFloat(budget),
-      city: city.trim(),
-      postcode_area: postcode.trim(),
-      photo_url: null,
-      ai_scope: null,
-      ai_materials: null,
-    });
+    try {
+      await addJobPost({
+        client_id: user?.id || '',
+        title: title.trim(),
+        description: description.trim(),
+        trade,
+        status: 'open',
+        budget: parseFloat(budget),
+        city: city.trim(),
+        postcode_area: postcode.trim(),
+        photo_url: null,
+        ai_scope: null,
+        ai_materials: null,
+      });
+    } catch (e: any) {
+      setSaving(false);
+      showAlert('Could not post job', e?.message || 'Something went wrong posting the job. Please try again.');
+      return;
+    }
     setSaving(false);
     handleClose();
   };
