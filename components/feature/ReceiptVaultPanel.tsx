@@ -2,9 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, Modal, TextInput, ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,8 +25,8 @@ const CATEGORIES: { id: ExpenseCategory; label: string; icon: any }[] = [
 ];
 const SPLITS: ExpenseSplit[] = ['business', 'personal', 'mixed'];
 
-export default function ReceiptVaultScreen() {
-  const router = useRouter();
+/** Receipt Vault content (no screen chrome) — embeddable as a tab or screen. */
+export function ReceiptVaultPanel() {
   const { user } = useAuth();
   const { summary } = useTaxPot();
   const { showAlert } = useAlert();
@@ -47,8 +44,6 @@ export default function ReceiptVaultScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  const goBack = () => { if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); };
-
   const totalDeductible = expenses.reduce((s, e) => s + deductibleAmount(e), 0);
   const taxableProfit = Math.max(0, summary.totalEarnings - totalDeductible);
   const needsReview = expenses.filter(e => e.needs_review).length;
@@ -61,18 +56,7 @@ export default function ReceiptVaultScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar style="light" />
-      <View style={styles.header}>
-        <Pressable onPress={goBack} hitSlop={8} style={styles.iconBtn}>
-          <MaterialIcons name="arrow-back" size={22} color={Colors.textSecondary} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Receipt Vault</Text>
-        <Pressable onPress={() => { haptics.tap(); setShowAdd(true); }} hitSlop={8} style={styles.iconBtn}>
-          <MaterialIcons name="add" size={24} color={Colors.primaryGlow} />
-        </Pressable>
-      </View>
-
+    <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Summary */}
         <View style={styles.summaryCard}>
@@ -98,6 +82,12 @@ export default function ReceiptVaultScreen() {
             Estimates only — not tax advice. Confirm allowable expenses with your accountant.
           </Text>
         </View>
+
+        {/* Add expense */}
+        <Pressable style={styles.addExpenseBtn} onPress={() => { haptics.tap(); setShowAdd(true); }}>
+          <MaterialIcons name="add" size={18} color={Colors.textInverse} />
+          <Text style={styles.addExpenseBtnText}>Add expense</Text>
+        </Pressable>
 
         {/* List */}
         {loading ? (
@@ -136,7 +126,7 @@ export default function ReceiptVaultScreen() {
         onClose={() => setShowAdd(false)}
         onSaved={() => { setShowAdd(false); load(); }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -170,7 +160,6 @@ function AddExpenseModal({
     if (picked.cancelled) { setScanning(false); return; }
     if (picked.error || !picked.base64) { setScanning(false); haptics.error(); showAlert('Could not scan', picked.error || 'Try again.'); return; }
     setReceiptPath(picked.path);
-    // Ask the AI to read it (no-ops gracefully until ai-receipt is deployed).
     const { data, error } = await analyzeReceipt(picked.base64);
     setScanning(false);
     if (error || !data) {
@@ -225,7 +214,7 @@ function AddExpenseModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={styles.modalContainer}>
         <View style={styles.header}>
           <Pressable onPress={close} hitSlop={8} style={styles.iconBtn}>
             <MaterialIcons name="close" size={22} color={Colors.textSecondary} />
@@ -234,8 +223,7 @@ function AddExpenseModal({
           <View style={{ width: 36 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          {/* Scan with AI */}
+        <ScrollView contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled">
           <Pressable style={styles.scanBtn} onPress={handleScan} disabled={scanning}>
             {scanning ? <ActivityIndicator size="small" color={Colors.primaryGlow} /> : <MaterialIcons name="document-scanner" size={20} color={Colors.primaryGlow} />}
             <Text style={styles.scanBtnText}>{scanning ? 'Reading receipt…' : 'Scan receipt with AI'}</Text>
@@ -252,15 +240,12 @@ function AddExpenseModal({
             </Pressable>
           )}
 
-          {/* Amount */}
           <Text style={styles.fieldLabel}>AMOUNT (£)</Text>
           <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.textMuted} />
 
-          {/* Vendor */}
           <Text style={styles.fieldLabel}>VENDOR (optional)</Text>
           <TextInput style={styles.input} value={vendor} onChangeText={setVendor} placeholder="e.g. Screwfix" placeholderTextColor={Colors.textMuted} />
 
-          {/* Category */}
           <Text style={styles.fieldLabel}>CATEGORY</Text>
           <View style={styles.chips}>
             {CATEGORIES.map(c => (
@@ -271,7 +256,6 @@ function AddExpenseModal({
             ))}
           </View>
 
-          {/* Split */}
           <Text style={styles.fieldLabel}>BUSINESS / PERSONAL</Text>
           <View style={styles.splitRow}>
             {SPLITS.map(s => (
@@ -286,20 +270,21 @@ function AddExpenseModal({
             {busy ? <ActivityIndicator size="small" color={Colors.textInverse} /> : <Text style={styles.saveBtnText}>Save expense</Text>}
           </Pressable>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
+  scroll: { padding: Spacing.md, gap: 12, paddingBottom: 40 },
+  modalContainer: { flex: 1, backgroundColor: Colors.bg },
+  modalScroll: { padding: Spacing.md, paddingTop: Spacing.xl, gap: 12, paddingBottom: 60 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: Spacing.md, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { ...Typography.headingMD },
-  scroll: { padding: Spacing.md, paddingTop: Spacing.xl, gap: 12, paddingBottom: 60 },
 
   summaryCard: { backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 18, gap: 10 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -311,6 +296,12 @@ const styles = StyleSheet.create({
   reviewPill: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: Colors.warningDim, borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
   reviewPillText: { ...Typography.labelXS, color: Colors.warning },
   disclaimer: { ...Typography.labelXS, color: Colors.textMuted, lineHeight: 16 },
+
+  addExpenseBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 50, borderRadius: Radius.lg, backgroundColor: Colors.primary,
+  },
+  addExpenseBtnText: { ...Typography.btnMD, color: Colors.textInverse },
 
   empty: { alignItems: 'center', gap: 8, paddingVertical: 50 },
   emptyTitle: { ...Typography.headingMD },
@@ -324,7 +315,6 @@ const styles = StyleSheet.create({
   rowAmount: { ...Typography.dataMD, color: Colors.success },
   listHint: { ...Typography.labelXS, color: Colors.textMuted, textAlign: 'center', marginTop: 4 },
 
-  // Modal
   scanBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, height: 54, borderRadius: Radius.lg, backgroundColor: Colors.primaryDim, borderWidth: 1, borderColor: Colors.primaryLight },
   scanBtnText: { ...Typography.btnMD, color: Colors.primaryGlow },
   attachBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 },

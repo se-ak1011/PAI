@@ -155,6 +155,20 @@ Two separate rails:
 
 ---
 
+## 🚀 Pre-launch cleanup checklist
+Before public App Store release:
+- [ ] **Delete test users** (Supabase → Authentication → Users) — cascades remove
+      their profile, jobs, posts, applications, reviews, expenses, and portfolio.
+- [ ] **Clear test storage folders** in each bucket (`job-photos`, `receipts`,
+      `portfolio`) — deleting a user does NOT remove their uploaded files.
+- [ ] **Remove any seed/demo data** added for testing.
+- [ ] **Provide a demo account** with realistic content for Apple review (required).
+- [ ] Confirm OpenAI billing + all 3 edge functions deployed (ai-quote / ai-receipt / ai-portfolio).
+- [ ] Add **Sign in with Apple** if keeping Google (App Store Guideline 4.8) — see Auth section.
+- [ ] Decide the payments provider (Stripe Connect vs escrow) — see `PAYMENTS.md` / `TRUSTAP_RESEARCH.md`.
+- [ ] Confirm the web build is live at `paii.site` (Netlify) for QR/public profiles.
+- [ ] Bump the marketing version (e.g. 1.0.x → 1.1.0) for the public release.
+
 ## ❓ Open decisions
 - Rail B escrow provider (after Stripe Connect hold-limit check).
 - Whether to keep Google sign-in (→ commits you to Apple sign-in too).

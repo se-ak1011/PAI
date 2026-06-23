@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AddIncomeModal } from '@/components/feature/AddIncomeModal';
+import { ReceiptVaultPanel } from '@/components/feature/ReceiptVaultPanel';
 import { RoleSwitcherBar } from './_layout';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useTaxPot } from '@/hooks/useTaxPot';
@@ -15,7 +15,7 @@ type FilterType = 'All' | 'PAI' | 'Manual';
 export default function TaxPotScreen() {
   const { summary, allIncome, taxRate, setTaxRate, deleteManualIncome } = useTaxPot();
   const { user } = useAuth();
-  const router = useRouter();
+  const [topTab, setTopTab] = useState<'taxpot' | 'receipts'>('taxpot');
   const [showModal, setShowModal] = useState(false);
   const [incomeFilter, setIncomeFilter] = useState<FilterType>('All');
 
@@ -34,13 +34,21 @@ export default function TaxPotScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="light" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Your Tax Pot</Text>
-          <Text style={styles.subtitle}>Guidance only — not financial advice</Text>
+      {/* Header + top tabs */}
+      <View style={styles.headerWrap}>
+        <Text style={styles.title}>Tax Pot</Text>
+        <View style={styles.tabBar}>
+          <Pressable style={[styles.tab, topTab === 'taxpot' && styles.tabActive]} onPress={() => setTopTab('taxpot')}>
+            <Text style={[styles.tabText, topTab === 'taxpot' && styles.tabTextActive]}>Tax Pot</Text>
+          </Pressable>
+          <Pressable style={[styles.tab, topTab === 'receipts' && styles.tabActive]} onPress={() => setTopTab('receipts')}>
+            <Text style={[styles.tabText, topTab === 'receipts' && styles.tabTextActive]}>Receipt Vault</Text>
+          </Pressable>
         </View>
+      </View>
 
+      {topTab === 'receipts' ? <ReceiptVaultPanel /> : (
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Main Tax Pot Card */}
         <View style={styles.potCard}>
           <Text style={styles.potLabel}>TOTAL SET-ASIDE</Text>
@@ -110,18 +118,6 @@ export default function TaxPotScreen() {
           </Text>
         </View>
 
-        {/* Receipt Vault entry */}
-        <Pressable style={styles.vaultBtn} onPress={() => router.push('/receipt-vault')}>
-          <View style={styles.vaultIcon}>
-            <MaterialIcons name="receipt-long" size={20} color={Colors.primaryGlow} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.vaultTitle}>Receipt Vault</Text>
-            <Text style={styles.vaultSub}>Log expenses & track deductibles</Text>
-          </View>
-          <MaterialIcons name="chevron-right" size={22} color={Colors.textMuted} />
-        </Pressable>
-
         {/* Income Log */}
         <View style={styles.section}>
           <View style={styles.logHeader}>
@@ -190,6 +186,7 @@ export default function TaxPotScreen() {
           )}
         </View>
       </ScrollView>
+      )}
 
       <AddIncomeModal visible={showModal} onClose={() => setShowModal(false)} />
       <RoleSwitcherBar />
@@ -199,10 +196,19 @@ export default function TaxPotScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
-  scroll: { padding: Spacing.md, paddingTop: Spacing.xl, gap: Spacing.md, paddingBottom: 100 },
+  scroll: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 },
   header: { gap: 4 },
   title: { ...Typography.brandLG },
   subtitle: { ...Typography.labelSM },
+  headerWrap: { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.sm, gap: 12 },
+  tabBar: {
+    flexDirection: 'row', backgroundColor: Colors.card, borderRadius: Radius.pill,
+    borderWidth: 1, borderColor: Colors.border, padding: 4, gap: 4,
+  },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', height: 40, borderRadius: Radius.pill },
+  tabActive: { backgroundColor: Colors.primary },
+  tabText: { ...Typography.btnSM, color: Colors.textMuted },
+  tabTextActive: { color: Colors.textInverse },
   potCard: {
     backgroundColor: Colors.primaryDim,
     borderRadius: Radius.xl,
