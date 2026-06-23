@@ -253,6 +253,15 @@ export default function InvoiceScreen() {
           {/* Job description */}
           <View style={styles.jobDesc}>
             <Text style={styles.jobTitle}>{job.title}</Text>
+            {job.trades && job.trades.length > 0 ? (
+              <View style={styles.tradeTags}>
+                {job.trades.map(t => (
+                  <View key={t} style={styles.tradeTag}>
+                    <Text style={styles.tradeTagText}>{t}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
             {job.description ? (
               <Text style={styles.jobDescText}>{job.description}</Text>
             ) : null}
@@ -499,6 +508,12 @@ const styles = StyleSheet.create({
   jobDesc: { padding: 24, paddingTop: 20, paddingBottom: 12, gap: 6 },
   jobTitle: { ...Typography.headingMD },
   jobDescText: { ...Typography.bodyMD, color: Colors.textSecondary, lineHeight: 20 },
+  tradeTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
+  tradeTag: {
+    paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill,
+    backgroundColor: Colors.primaryDim, borderWidth: 1, borderColor: Colors.primaryLight,
+  },
+  tradeTagText: { ...Typography.labelXS, color: Colors.primaryGlow },
 
   // Line items
   lineItems: { paddingHorizontal: 24, paddingBottom: 24, gap: 0 },

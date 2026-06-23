@@ -24,6 +24,8 @@ onto an existing one.
 | `20260622000003_portfolio_projects.sql` | `portfolio_projects` table + owner RLS |
 | `20260622000004_public_portfolio.sql` | public read of published projects + `portfolio` storage policies |
 | `20260622000005_branding_logo.sql` | `user_profiles.logo_url` |
+| `20260623000001_storage_buckets.sql` | Creates `job-photos`, `receipts`, `portfolio` storage buckets |
+| `20260623000002_private_job_trades.sql` | `private_jobs.trades` (trades a job spans) |
 
 > **Easiest path:** run `supabase/apply_all_migrations.sql` — it concatenates every
 > file above (idempotent) **and** creates the `job-photos`, `receipts`, and

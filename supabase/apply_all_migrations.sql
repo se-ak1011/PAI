@@ -11,7 +11,8 @@
 --   20260622000003_portfolio_projects          (portfolio_projects table)
 --   20260622000004_public_portfolio            (public read + portfolio storage)
 --   20260622000005_branding_logo               (user_profiles.logo_url)
---   + storage bucket creation (job-photos, receipts, portfolio)
+--   20260623000001_storage_buckets             (job-photos, receipts, portfolio buckets)
+--   20260623000002_private_job_trades          (private_jobs.trades)
 -- Safe to re-run (create if not exists / create or replace / drop policy if exists /
 -- add column if not exists / on conflict do nothing).
 --
@@ -733,6 +734,11 @@ create policy "Portfolio media: owner can delete"
 -- Optional business logo for contractors (shown on quotes/invoices + public profile).
 alter table public.user_profiles
   add column if not exists logo_url text;
+
+-- ==================== 20260623000002_private_job_trades ====================
+-- Persist the trade(s) a job spans (used by the AI prompt + shown on the job).
+alter table public.private_jobs
+  add column if not exists trades text[] not null default '{}';
 
 -- ==================== storage buckets ====================
 -- Create the buckets the app uploads to, so storage works without manual dashboard
