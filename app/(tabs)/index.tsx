@@ -134,7 +134,7 @@ function ContractorDashboard() {
           <View style={styles.todayHeader}>
             <View style={styles.todayHeaderLeft}>
               <MaterialIcons name="today" size={18} color={Colors.primaryGlow} />
-              <Text style={styles.todayTitle}>Jobs of the Day</Text>
+              <Text style={styles.todayTitle}>Today's Jobs</Text>
             </View>
             <Text style={styles.todayCount}>{todaysJobs.length}</Text>
           </View>
