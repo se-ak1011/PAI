@@ -12,6 +12,7 @@ import { useAlert } from '@/template/ui';
 import { generateAIQuote, AIQuoteResult } from '@/services/aiService';
 import { haptics } from '@/lib/haptics';
 import { MaterialIcons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface CreateJobModalProps {
   visible: boolean;
@@ -64,6 +65,10 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
   const [hourlyRateStr, setHourlyRateStr] = useState('');
   const [estimatedHoursStr, setEstimatedHoursStr] = useState('');
 
+  // Scheduling — optional date the job is booked in for.
+  const [scheduledDate, setScheduledDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   const [step, setStep] = useState<Step>(0);
   const [saving, setSaving] = useState(false);
   // Manual mode: skip the AI quote and enter job details by hand.
@@ -85,6 +90,8 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
     setLocation(user?.city ?? '');
     setTrades(user?.trades?.[0] ? [user.trades[0]] : [TRADE_CATEGORIES[0]]);
     setJobType('fixed');
+    setScheduledDate(null);
+    setShowDatePicker(false);
     setAiResult(null);
     setManualMode(false);
     setJobTitle('');
@@ -206,6 +213,8 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
         vat: safeVat,
         materials_items: safeMaterialItems.map(m => ({ name: m.name, qty: m.qty, price: m.estimatedPrice, unit: m.unit })),
         trades,
+        scheduled_date: scheduledDate ? scheduledDate.toISOString().split('T')[0] : null,
+        location: location.trim() || null,
         receipts: [],
         invoiced_at: null,
         paid_at: null,
@@ -567,6 +576,45 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
                 />
               </View>
 
+              {/* Booking date + location — powers "Jobs of the Day" on the dashboard */}
+              <View style={styles.twoCol}>
+                <View style={[styles.fieldGroup, { flex: 1 }]}>
+                  <Text style={styles.fieldLabel}>JOB DATE (OPTIONAL)</Text>
+                  <Pressable style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
+                    <MaterialIcons name="event" size={16} color={scheduledDate ? Colors.primaryGlow : Colors.textMuted} />
+                    <Text style={[styles.dateBtnText, scheduledDate && styles.dateBtnTextSet]}>
+                      {scheduledDate ? scheduledDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Set date'}
+                    </Text>
+                    {scheduledDate ? (
+                      <Pressable hitSlop={8} onPress={() => setScheduledDate(null)}>
+                        <MaterialIcons name="close" size={15} color={Colors.textMuted} />
+                      </Pressable>
+                    ) : null}
+                  </Pressable>
+                </View>
+                <View style={[styles.fieldGroup, { flex: 1 }]}>
+                  <Text style={styles.fieldLabel}>LOCATION (OPTIONAL)</Text>
+                  <TextInput
+                    style={styles.fieldInput}
+                    value={location}
+                    onChangeText={setLocation}
+                    placeholder="e.g. Bude, EX23"
+                    placeholderTextColor={Colors.textMuted}
+                  />
+                </View>
+              </View>
+              {showDatePicker ? (
+                <DateTimePicker
+                  value={scheduledDate || new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  onChange={(event, date) => {
+                    if (Platform.OS !== 'ios') setShowDatePicker(false);
+                    if (event.type === 'set' && date) setScheduledDate(date);
+                  }}
+                />
+              ) : null}
+
               {jobType === 'hourly' ? (
                 <>
                   {/* Hourly rate + estimated hours */}
@@ -759,6 +807,13 @@ const styles = StyleSheet.create({
     ...Typography.bodyMD, color: Colors.textPrimary,
   },
   twoCol: { flexDirection: 'row', gap: 12 },
+  dateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 13,
+  },
+  dateBtnText: { ...Typography.bodyMD, color: Colors.textMuted, flex: 1 },
+  dateBtnTextSet: { color: Colors.textPrimary },
 
   // Trade chips
   tradeRow: { gap: 8, paddingVertical: 2 },

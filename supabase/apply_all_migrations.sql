@@ -15,6 +15,7 @@
 --   20260623000002_private_job_trades          (private_jobs.trades)
 --   20260623000003_contractor_verification     (user_profiles.verification_status + docs)
 --   20260623000004_messaging                    (conversations + messages, gated to accepted jobs)
+--   20260623000005_job_schedule                  (private_jobs.scheduled_date + location)
 -- Safe to re-run (create if not exists / create or replace / drop policy if exists /
 -- add column if not exists / on conflict do nothing).
 --
@@ -874,6 +875,14 @@ create policy messages_update
         and (c.customer_id = auth.uid() or c.contractor_id = auth.uid())
     )
   );
+
+-- ==================== 20260623000005_job_schedule ====================
+-- Booking: scheduled_date + location on private_jobs (dashboard "Jobs of the Day").
+alter table public.private_jobs
+  add column if not exists scheduled_date date,
+  add column if not exists location text;
+create index if not exists private_jobs_scheduled_idx
+  on public.private_jobs (contractor_id, scheduled_date);
 
 -- ==================== storage buckets ====================
 -- Create the buckets the app uploads to, so storage works without manual dashboard

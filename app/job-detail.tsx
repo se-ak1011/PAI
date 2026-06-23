@@ -335,6 +335,22 @@ export default function JobDetailScreen() {
             <Text style={styles.metaLabel}>CUSTOMER</Text>
             <Text style={styles.metaValue}>{job.customer}</Text>
           </View>
+          {job.scheduled_date ? (
+            <View style={styles.metaRow}>
+              <MaterialIcons name="event" size={16} color={Colors.primaryGlow} />
+              <Text style={styles.metaLabel}>BOOKED</Text>
+              <Text style={[styles.metaValue, { color: Colors.primaryGlow }]}>
+                {new Date(job.scheduled_date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+              </Text>
+            </View>
+          ) : null}
+          {job.location ? (
+            <View style={styles.metaRow}>
+              <MaterialIcons name="location-on" size={16} color={Colors.textMuted} />
+              <Text style={styles.metaLabel}>LOCATION</Text>
+              <Text style={styles.metaValue}>{job.location}</Text>
+            </View>
+          ) : null}
           <View style={styles.metaRow}>
             <MaterialIcons name="calendar-today" size={16} color={Colors.textMuted} />
             <Text style={styles.metaLabel}>CREATED</Text>

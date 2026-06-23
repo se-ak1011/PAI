@@ -95,6 +95,8 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
         vat,
         materials_items: [],
         trades: categories,
+        scheduled_date: null,
+        location: null,
         receipts: [],
         invoiced_at: today,
         paid_at: null,

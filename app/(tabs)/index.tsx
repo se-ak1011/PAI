@@ -47,6 +47,11 @@ function ContractorDashboard() {
 
   const activeJobs = privateJobs.filter(j => ['active', 'in_progress', 'accepted'].includes(j.status));
   const invoicedJobs = privateJobs.filter(j => j.status === 'invoiced');
+  // "Jobs of the Day" — jobs booked in for today (local date), soonest first.
+  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD, local
+  const todaysJobs = privateJobs
+    .filter(j => j.scheduled_date === todayStr && j.status !== 'paid' && j.status !== 'cancelled')
+    .sort((a, b) => a.title.localeCompare(b.title));
   const totalEarnings = privateJobs
     .filter(j => j.status === 'paid')
     .reduce((s, j) => s + j.total, 0);
@@ -122,6 +127,45 @@ function ContractorDashboard() {
               <Text style={styles.earningsSubVal}>{activeJobs.length}</Text>
             </View>
           </View>
+        </View>
+
+        {/* Jobs of the Day */}
+        <View style={styles.todaySection}>
+          <View style={styles.todayHeader}>
+            <View style={styles.todayHeaderLeft}>
+              <MaterialIcons name="today" size={18} color={Colors.primaryGlow} />
+              <Text style={styles.todayTitle}>Jobs of the Day</Text>
+            </View>
+            <Text style={styles.todayCount}>{todaysJobs.length}</Text>
+          </View>
+          {todaysJobs.length === 0 ? (
+            <View style={styles.todayEmpty}>
+              <Text style={styles.todayEmptyText}>Nothing booked in for today. Set a date on a job to see it here.</Text>
+            </View>
+          ) : (
+            todaysJobs.map(j => (
+              <Pressable
+                key={j.id}
+                style={styles.todayCard}
+                onPress={() => router.push({ pathname: '/job-detail', params: { id: j.id } })}
+              >
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={styles.todayJobTitle} numberOfLines={1}>{j.title}</Text>
+                  <View style={styles.todayMetaRow}>
+                    <MaterialIcons name="person" size={13} color={Colors.textMuted} />
+                    <Text style={styles.todayMeta} numberOfLines={1}>{j.customer || 'Customer'}</Text>
+                    {j.location ? (
+                      <>
+                        <MaterialIcons name="location-on" size={13} color={Colors.textMuted} style={{ marginLeft: 6 }} />
+                        <Text style={styles.todayMeta} numberOfLines={1}>{j.location}</Text>
+                      </>
+                    ) : null}
+                  </View>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
+              </Pressable>
+            ))
+          )}
         </View>
 
         {/* Subscription setup now happens in onboarding — only surface a
@@ -404,6 +448,24 @@ const styles = StyleSheet.create({
   topDivider: { height: 1, backgroundColor: Colors.border },
   scroll: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 120 },
   greetRow: { gap: 4 },
+  todaySection: { gap: 8 },
+  todayHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  todayHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  todayTitle: { ...Typography.headingMD },
+  todayCount: { ...Typography.dataMD, color: Colors.primaryGlow },
+  todayEmpty: {
+    backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
+    borderColor: Colors.border, padding: 16,
+  },
+  todayEmptyText: { ...Typography.labelSM, color: Colors.textMuted, lineHeight: 18 },
+  todayCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
+    borderColor: Colors.border, padding: 14,
+  },
+  todayJobTitle: { ...Typography.dataMD },
+  todayMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, flexWrap: 'wrap' },
+  todayMeta: { ...Typography.labelSM, color: Colors.textMuted },
   dateLabel: { ...Typography.labelXS, color: Colors.textMuted },
   customerModeLabel: { ...Typography.labelXS, color: Colors.textMuted },
   greetLine: { fontSize: 30, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.6 },
