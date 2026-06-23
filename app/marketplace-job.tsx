@@ -11,6 +11,7 @@ import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template/ui';
 import { getSupabaseClient } from '@/template/core';
+import { ensureConversation, getConversation } from '@/services/messageService';
 import { calculateCheckoutTotal, PLATFORM_PRINCIPLES } from '@/constants/config';
 import { useReliability } from '@/hooks/useReliability';
 import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
@@ -141,7 +142,12 @@ export default function MarketplaceJobScreen() {
               receipts: [],
               source_job_post_id: post.id,
             });
-            showAlert('Quote Accepted', `Job is now in progress. Stripe payment will be processed for £${totals.totalDue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}.`);
+            // Open the (gated) message thread between this customer and the hired
+            // contractor now that the quote is accepted.
+            if (user?.id) {
+              await ensureConversation({ jobPostId: post.id, customerId: user.id, contractorId });
+            }
+            showAlert('Quote Accepted', `Job is now in progress. You can now message ${contractorName} from this job. Stripe payment will be processed for £${totals.totalDue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}.`);
             router.back();
           },
         },
@@ -450,6 +456,17 @@ function ApplicationsList({
   const [apps, setApps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [acceptedApp, setAcceptedApp] = useState<string | null>(null);
+  const router = useRouter();
+  const { user } = useAuth();
+
+  // Customer: open (get-or-create) the message thread with the hired contractor.
+  const openThread = async (contractorId: string, contractorName: string) => {
+    if (!user?.id) return;
+    const { conversation } = await ensureConversation({ jobPostId, customerId: user.id, contractorId });
+    if (conversation) {
+      router.push({ pathname: '/chat', params: { id: conversation.id, title: contractorName } });
+    }
+  };
 
   React.useEffect(() => {
     const supabase = getSupabaseClient();
@@ -555,6 +572,14 @@ function ApplicationsList({
                     onPress={() => onAccept(app.id, app.contractor_id, parseFloat(app.quote_amount), app.contractor?.username || 'Contractor')}
                   >
                     <Text style={styles.acceptBtnText}>Accept Quote</Text>
+                  </Pressable>
+                ) : app.status === 'accepted' ? (
+                  <Pressable
+                    style={styles.messageBtn}
+                    onPress={() => openThread(app.contractor_id, app.contractor?.username || 'Contractor')}
+                  >
+                    <MaterialIcons name="chat-bubble-outline" size={15} color={Colors.primaryGlow} />
+                    <Text style={styles.messageBtnText}>Message</Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -715,4 +740,10 @@ const styles = StyleSheet.create({
   appStatusTextRejected: { color: Colors.error },
   acceptBtn: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: Colors.primary, borderRadius: Radius.md },
   acceptBtnText: { ...Typography.btnSM, color: Colors.textInverse },
+  messageBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card,
+  },
+  messageBtnText: { ...Typography.btnSM, color: Colors.primaryGlow },
 });

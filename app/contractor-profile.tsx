@@ -382,7 +382,7 @@ export default function ContractorProfileScreen() {
       <View style={styles.footer}>
         <Pressable
           style={styles.messageBtn}
-          onPress={() => showAlert('Coming Soon', 'Messaging will be available soon.')}
+          onPress={() => showAlert('Message after hiring', 'To keep things safe, messaging opens once you accept this contractor’s quote for a job — you won’t be messaging strangers.')}
         >
           <MaterialIcons name="chat-bubble-outline" size={20} color={Colors.textPrimary} />
         </Pressable>

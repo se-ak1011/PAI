@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { pickAndUploadJobPhoto, getJobPhotoUrls, deleteJobPhoto } from '@/services/photoService';
 import { haptics } from '@/lib/haptics';
 import { getSupabaseClient } from '@/template/core';
+import { getConversation, ensureConversation } from '@/services/messageService';
 import { useTaxPot } from '@/hooks/useTaxPot';
 import { useAlert } from '@/template/ui';
 import { JOB_STATUS_ACTIONS, PLATFORM_PRINCIPLES } from '@/constants/config';
@@ -56,6 +57,31 @@ export default function JobDetailScreen() {
 
   const job = privateJobs.find(j => j.id === id);
   const [updating, setUpdating] = useState(false);
+  const [messageBusy, setMessageBusy] = useState(false);
+
+  // Open the message thread with the customer (marketplace-accepted jobs only).
+  const handleMessageCustomer = async () => {
+    if (!job?.source_job_post_id || !user?.id) return;
+    setMessageBusy(true);
+    // The conversation is created when the customer accepts; just open it.
+    let convo = await getConversation(job.source_job_post_id, user.id);
+    if (!convo) {
+      // Legacy jobs accepted before messaging existed: fetch the customer and create it.
+      const supabase = getSupabaseClient();
+      const { data: post } = await supabase
+        .from('job_posts').select('client_id').eq('id', job.source_job_post_id).maybeSingle();
+      if (post?.client_id) {
+        const res = await ensureConversation({ jobPostId: job.source_job_post_id, customerId: post.client_id, contractorId: user.id });
+        convo = res.conversation;
+      }
+    }
+    setMessageBusy(false);
+    if (convo) {
+      router.push({ pathname: '/chat', params: { id: convo.id, title: job.customer || 'Customer' } });
+    } else {
+      showAlert('Messaging unavailable', 'The chat will be available once the customer opens it from their side.');
+    }
+  };
 
   // Progress photos: resolve private storage paths -> temporary signed URLs.
   const photoPaths = job?.progress_photos ?? [];
@@ -336,6 +362,20 @@ export default function JobDetailScreen() {
             </View>
           ) : null}
         </View>
+
+        {/* Message the customer — only for marketplace-accepted jobs (a real customer account) */}
+        {job.source_job_post_id ? (
+          <Pressable style={styles.messageCustomerBtn} onPress={handleMessageCustomer} disabled={messageBusy}>
+            {messageBusy ? (
+              <ActivityIndicator size="small" color={Colors.primaryGlow} />
+            ) : (
+              <>
+                <MaterialIcons name="chat-bubble-outline" size={18} color={Colors.primaryGlow} />
+                <Text style={styles.messageCustomerText}>Message {job.customer || 'customer'}</Text>
+              </>
+            )}
+          </Pressable>
+        ) : null}
 
         {/* Status timeline */}
         <View style={styles.timeline}>
@@ -701,6 +741,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
     borderColor: Colors.border, padding: 16, gap: 12,
   },
+  messageCustomerBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border, paddingVertical: 13,
+  },
+  messageCustomerText: { ...Typography.btnSM, color: Colors.primaryGlow },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   metaLabel: { ...Typography.labelXS, width: 80 },
   metaValue: { ...Typography.bodyMD, flex: 1 },
