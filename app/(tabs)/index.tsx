@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, Pressable, Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useAuth, getTrialDaysLeft, isSubscriptionActive } from '@/hooks/useAuth';
@@ -37,6 +37,7 @@ function getDateLabel(): string {
 // ─────────────────────────────────────────────
 function ContractorDashboard() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { privateJobs } = useJobs();
   const { summary } = useTaxPot();
@@ -80,7 +81,7 @@ function ContractorDashboard() {
   const setupProgress = doneCount / setupItems.length;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar style="light" />
 
       <View style={styles.topBar}>
@@ -230,7 +231,7 @@ function ContractorDashboard() {
       <RoleSwitcherBar />
       <AddIncomeModal visible={showIncome} onClose={() => setShowIncome(false)} />
       <CreateJobModal visible={showJob} onClose={() => setShowJob(false)} />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -239,6 +240,7 @@ function ContractorDashboard() {
 // ─────────────────────────────────────────────
 function CustomerDashboard() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { jobPosts } = useJobs();
   const { showAlert } = useAlert();
@@ -255,7 +257,7 @@ function CustomerDashboard() {
   const doneCount = setupItems.filter(i => i.done).length;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar style="light" />
 
       <View style={styles.topBar}>
@@ -357,7 +359,7 @@ function CustomerDashboard() {
 
       <RoleSwitcherBar />
       <PostJobModal visible={showPostJob} onClose={() => setShowPostJob(false)} />
-    </SafeAreaView>
+    </View>
   );
 }
 

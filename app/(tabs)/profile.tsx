@@ -9,7 +9,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
@@ -638,6 +638,7 @@ const settStyles = StyleSheet.create({
 // Contractor Profile Tab
 // ─────────────────────────────────────────────
 function ContractorProfileTab() {
+  const insets = useSafeAreaInsets();
   const { user, updateProfile } = useAuth();
   const { showAlert } = useAlert();
   const { privateJobs } = useJobs();
@@ -786,7 +787,7 @@ function ContractorProfileTab() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar style="light" />
 
       {/* Header */}
@@ -1036,7 +1037,7 @@ function ContractorProfileTab() {
       <RoleSwitcherBar currentTab="profile" />
       <EditProfileModal visible={showEdit} onClose={() => setShowEdit(false)} isContractor />
       <SettingsModal visible={showSettings} onClose={() => setShowSettings(false)} />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -1044,6 +1045,7 @@ function ContractorProfileTab() {
 // Customer Profile Tab
 // ─────────────────────────────────────────────
 function CustomerProfileTab() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { jobPosts } = useJobs();
   const router = useRouter();
@@ -1074,7 +1076,7 @@ function CustomerProfileTab() {
 
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar style="light" />
 
       <View style={styles.topBar}>
@@ -1209,7 +1211,7 @@ function CustomerProfileTab() {
       <RoleSwitcherBar currentTab="profile" />
       <EditProfileModal visible={showEdit} onClose={() => setShowEdit(false)} isContractor={false} />
       <SettingsModal visible={showSettings} onClose={() => setShowSettings(false)} />
-    </SafeAreaView>
+    </View>
   );
 }
 
