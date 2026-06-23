@@ -15,7 +15,7 @@ type Role = 'contractor' | 'customer' | 'both';
 
 export default function AuthScreen() {
   const router = useRouter();
-  const { login, signup, signInWithGoogle, operationLoading } = useAuth();
+  const { login, signup, operationLoading } = useAuth();
   const { showAlert } = useAlert();
   const [screen, setScreen] = useState<Screen>('login');
   const [email, setEmail] = useState('');
@@ -147,38 +147,6 @@ export default function AuthScreen() {
           <Text style={styles.heading}>Welcome back.</Text>
           <Text style={styles.subheading}>Sign in to your PAI account.</Text>
 
-          {/* Social buttons */}
-          <View style={styles.socialGroup}>
-            <Pressable
-              style={styles.socialBtn}
-              onPress={async () => {
-                const { error } = await signInWithGoogle('contractor');
-                if (error) showAlert('Google Sign-In Failed', error);
-              }}
-              disabled={operationLoading}
-            >
-              <View style={styles.gIcon}>
-                <Text style={styles.gIconText}>G</Text>
-              </View>
-              <Text style={styles.socialBtnText}>Continue with Google</Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.socialBtn, { opacity: 0.4 }]}
-              onPress={() => showAlert('Not Available', 'Apple Sign-In is not supported on this platform.')}
-            >
-              <MaterialIcons name="phone-iphone" size={20} color={Colors.textSecondary} />
-              <Text style={styles.socialBtnText}>Continue with Apple</Text>
-            </Pressable>
-          </View>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR EMAIL</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
           {/* Email/password fields */}
           <View style={styles.fields}>
             <View style={styles.field}>
@@ -241,28 +209,6 @@ const styles = StyleSheet.create({
     lineHeight: 44,
   },
   subheading: { ...Typography.bodyMD, color: Colors.textSecondary },
-  socialGroup: { gap: 12, marginTop: 8 },
-  socialBtn: {
-    height: 58,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  gIcon: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: '#fff',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  gIconText: { fontSize: 14, fontWeight: '800', color: '#4285F4' },
-  socialBtnText: { ...Typography.btnMD, color: Colors.textSecondary },
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerText: { ...Typography.labelXS, color: Colors.textMuted },
   fields: { gap: 12 },
   field: {
     height: 58,

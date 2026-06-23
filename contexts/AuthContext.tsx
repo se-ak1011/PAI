@@ -52,7 +52,6 @@ interface AuthContextType {
   isOnboarded: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
   signup: (email: string, password: string, name: string, accountType: UserRole) => Promise<{ error: string | null }>;
-  signInWithGoogle: (role?: UserRole) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<{ error: string | null }>;
   completeOnboarding: (data: Partial<UserProfile>) => Promise<{ error: string | null }>;
@@ -257,7 +256,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isOnboarded: false,
         login: unavailable,
         signup: unavailable,
-        signInWithGoogle: unavailable,
         logout: async () => {},
         deleteAccount: unavailable,
         completeOnboarding: unavailable,
@@ -309,25 +307,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.session) setSession(data.session);
     }
     return { error: null };
-  };
-
-  const signInWithGoogle = async (role: UserRole = 'contractor'): Promise<{ error: string | null }> => {
-    setOperationLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: undefined,
-          queryParams: { prompt: 'select_account' },
-        },
-      });
-      setOperationLoading(false);
-      if (error) return { error: error.message };
-      return { error: null };
-    } catch (err: any) {
-      setOperationLoading(false);
-      return { error: err?.message || 'Google sign-in failed' };
-    }
   };
 
   const logout = async () => {
@@ -453,7 +432,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isOnboarded: user?.onboarding_complete ?? false,
       login,
       signup,
-      signInWithGoogle,
       logout,
       deleteAccount,
       completeOnboarding,

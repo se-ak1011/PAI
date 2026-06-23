@@ -125,22 +125,23 @@ Two separate rails:
 
 ---
 
-## 🔐 Auth providers (Google + Apple)
+## 🔐 Auth providers — ✅ DECIDED: email-only
 
-- **State:** Google is half-built (code incomplete for native + provider not configured
-  in Supabase). Apple is a stub ("not supported") and `expo-apple-authentication` isn't
-  installed (likely removed earlier to unblock builds).
-- **⚠️ App Store Guideline 4.8:** if you offer Google sign-in, you **must** also offer
-  Sign in with Apple, or Apple rejects the app. So: keep Google → Apple is mandatory;
-  or drop Google → email-only is fine.
-- **Work:**
-  - **Google:** switch to native ID-token flow + Google Cloud OAuth client IDs + enable
-    Google provider in Supabase.
-  - **Apple:** add `expo-apple-authentication` + implement + entitlement (rebuild) +
-    Apple Developer Service ID/key + enable Apple provider in Supabase.
-- **Not a blocker for testing now** — email/password works. This is a pre-public-launch item.
-- **Secrets:** client IDs are public-safe; Google client *secret* + Apple private key go
-  straight into Supabase, never into chat/repo.
+- **Decision:** PAI uses **email/password only**. Google + Apple sign-in have been
+  **removed** from the UI (`app/auth.tsx`) and the code (`signInWithGoogle` /
+  `signInWithOAuth` gone from `contexts/AuthContext.tsx`).
+- **Why:**
+  - Traders dislike "share with Google/Apple" prompts; email feels more neutral.
+  - Keeps the sign-in screen on-brand (no Google/Apple branding).
+  - **App Store Guideline 4.8 no longer applies.** 4.8 only triggers if you offer a
+    third-party social login — with email-only there's nothing forcing Sign in with
+    Apple, so it's one fewer rejection risk and nothing to build.
+- **Subscriptions are unaffected.** RevenueCat + Apple IAP / Google Play Billing are
+  **payment**, not sign-in — they bill the device's existing store account. Email-only
+  auth + IAP subscriptions is fully publishable. Link them by using the **Supabase user
+  id as the RevenueCat App User ID**.
+- **Leftover deps:** `expo-auth-session` / `expo-web-browser` are now unused by auth.
+  Harmless to leave; remove in a later dependency cleanup if desired.
 
 ---
 
