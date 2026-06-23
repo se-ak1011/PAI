@@ -86,9 +86,14 @@ function ContractorDashboard() {
 
       <View style={styles.topBar}>
         <Text style={styles.dashTitle}>Dashboard</Text>
-        <Pressable style={styles.bellBtn} onPress={() => showAlert('Notifications', 'No new notifications.')}>
-          <MaterialIcons name="notifications-none" size={22} color={Colors.textSecondary} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable style={styles.bellBtn} onPress={() => router.push('/messages')}>
+            <MaterialIcons name="chat-bubble-outline" size={21} color={Colors.textSecondary} />
+          </Pressable>
+          <Pressable style={styles.bellBtn} onPress={() => showAlert('Notifications', 'No new notifications.')}>
+            <MaterialIcons name="notifications-none" size={22} color={Colors.textSecondary} />
+          </Pressable>
+        </View>
       </View>
       <View style={styles.topDivider} />
 
@@ -262,9 +267,14 @@ function CustomerDashboard() {
 
       <View style={styles.topBar}>
         <Text style={styles.dashTitle}>Dashboard</Text>
-        <Pressable style={styles.bellBtn} onPress={() => showAlert('Notifications', 'No new notifications.')}>
-          <MaterialIcons name="notifications-none" size={22} color={Colors.textSecondary} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable style={styles.bellBtn} onPress={() => router.push('/messages')}>
+            <MaterialIcons name="chat-bubble-outline" size={21} color={Colors.textSecondary} />
+          </Pressable>
+          <Pressable style={styles.bellBtn} onPress={() => showAlert('Notifications', 'No new notifications.')}>
+            <MaterialIcons name="notifications-none" size={22} color={Colors.textSecondary} />
+          </Pressable>
+        </View>
       </View>
       <View style={styles.topDivider} />
 
@@ -390,6 +400,7 @@ const styles = StyleSheet.create({
   },
   dashTitle: { ...Typography.brandMD },
   bellBtn: { padding: 4 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   topDivider: { height: 1, backgroundColor: Colors.border },
   scroll: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 120 },
   greetRow: { gap: 4 },
