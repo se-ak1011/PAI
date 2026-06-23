@@ -72,6 +72,7 @@ Use the contractor's own rates for labour estimates where provided. Price materi
 
 Respond with ONLY this JSON structure:
 {
+  "title": "A SHORT job title — max 5 words, no full stop (e.g. 'Bathroom retile', 'Full house rewire', 'Kitchen tap replacement'). This is a heading, NOT the description.",
   "scope": "A concise 1-2 sentence scope of the work — plain and factual, no fluff.",
   "materials": [
     { "name": "Item name", "qty": 1, "unit": "each", "estimatedPrice": 0.00 }

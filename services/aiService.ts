@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 
 export interface AIQuoteResult {
+  title?: string;
   scope: string;
   materials: { name: string; qty: number; unit: string; estimatedPrice: number }[];
   labourEstimate: { days: number; dayRateFrom: number; totalFrom: number };

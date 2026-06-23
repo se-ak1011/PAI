@@ -149,9 +149,12 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
 
     haptics.success();
     setAiResult(data);
-    // Pre-fill title from scope first sentence
-    const firstLine = data.scope?.split('.')[0]?.trim();
-    setJobTitle(firstLine && firstLine.length < 80 ? firstLine : description.slice(0, 60));
+    // Pre-fill a SHORT title from the AI's dedicated title field. Never copy the
+    // scope/description into the title. Fallback to a trade-based heading if the
+    // function hasn't been redeployed with the new `title` field yet.
+    const aiTitle = (data.title || '').trim();
+    const fallbackTitle = trades[0] ? `${trades[0]} job` : description.trim().slice(0, 40);
+    setJobTitle(aiTitle && aiTitle.length <= 60 ? aiTitle : fallbackTitle);
     if (jobType === 'hourly') {
       // Pre-fill estimated hours from AI labour days (×8 hrs/day), rate from profile
       const aiDays = data.labourEstimate?.days ?? 1;
