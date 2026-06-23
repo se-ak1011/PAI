@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template/ui';
-import { getSupabaseClient } from '@/template/core';
+import { adminListDisputes, adminResolveDispute, adminListReviews, adminModerateReview } from '@/services/adminService';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useReliability } from '@/hooks/useReliability';
 import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
@@ -47,24 +47,14 @@ export default function AdminDisputesScreen() {
   const [resolutionNote, setResolutionNote] = React.useState('');
   const [resolving, setResolving] = React.useState(false);
 
-  const supabase = getSupabaseClient();
   const [activeTab, setActiveTab] = React.useState<'disputes' | 'reviews'>('disputes');
   const [reviews, setReviews] = React.useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = React.useState(false);
 
   const loadDisputes = React.useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('disputes')
-      .select(`
-        *,
-        contractor:contractor_id(username),
-        customer:customer_id(username),
-        job_post:job_post_id(title)
-      `)
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
+    const { data } = await adminListDisputes();
+    if (data) {
       setDisputes(data.map((d: any) => ({
         ...d,
         contractor_name: d.contractor?.username || 'Unknown Contractor',
@@ -77,11 +67,7 @@ export default function AdminDisputesScreen() {
 
   const loadReviews = React.useCallback(async () => {
     setReviewsLoading(true);
-    const { data } = await supabase
-      .from('reviews')
-      .select('*, author:author_id(username), subject:subject_id(username)')
-      .eq('mode', 'contractor_to_customer')
-      .order('created_at', { ascending: false });
+    const { data } = await adminListReviews();
     if (data) setReviews(data);
     setReviewsLoading(false);
   }, []);
@@ -108,19 +94,10 @@ export default function AdminDisputesScreen() {
         {
           text: 'Confirm', onPress: async () => {
             setResolving(true);
-            const { error } = await supabase
-              .from('disputes')
-              .update({
-                status: 'resolved',
-                resolution_note: resolutionNote,
-                resolution_outcome: outcome,
-                resolved_by: user?.id,
-                resolved_at: new Date().toISOString(),
-              })
-              .eq('id', id);
+            const { error } = await adminResolveDispute(id, outcome, resolutionNote);
 
             if (error) {
-              showAlert('Error', 'Failed to save resolution: ' + error.message);
+              showAlert('Error', 'Failed to save resolution: ' + error);
             } else {
               setResolutionNote('');
               setSelected(null);
@@ -134,6 +111,26 @@ export default function AdminDisputesScreen() {
   };
 
   const selectedDispute = disputes.find(d => d.id === selected);
+
+  // Access gate: non-admins never see moderation data. (The server enforces this
+  // too — this is just so the UI doesn't even try.)
+  if (!user?.is_admin) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <StatusBar style="light" />
+        <View style={styles.header}>
+          <Pressable onPress={goBack} hitSlop={8}>
+            <MaterialIcons name="arrow-back" size={22} color={Colors.textSecondary} />
+          </Pressable>
+          <View><Text style={styles.title}>Admin</Text></View>
+        </View>
+        <View style={styles.emptyState}>
+          <MaterialIcons name="lock" size={36} color={Colors.textMuted} />
+          <Text style={styles.emptyText}>You don’t have access to this area.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -227,7 +224,7 @@ export default function AdminDisputesScreen() {
                       showAlert('Remove Review', 'Remove this review from the reliability score?', [
                         { text: 'Cancel', style: 'cancel' },
                         { text: 'Remove', style: 'destructive', onPress: async () => {
-                          await supabase.from('reviews').update({ status: 'removed' }).eq('id', r.id);
+                          await adminModerateReview(r.id, 'removed');
                           loadReviews();
                         }},
                       ]);
@@ -240,7 +237,7 @@ export default function AdminDisputesScreen() {
                   <Pressable
                     style={styles.restoreReviewBtn}
                     onPress={async () => {
-                      await supabase.from('reviews').update({ status: 'published' }).eq('id', r.id);
+                      await adminModerateReview(r.id, 'published');
                       loadReviews();
                     }}
                   >

@@ -43,6 +43,8 @@ export interface UserProfile {
   verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected';
   verification_docs?: string[];
   verification_submitted_at?: string | null;
+  // Admin/moderation access (read-only flag; set server-side via the admins table)
+  is_admin?: boolean;
   // Availability
   availability_days?: string[];
 }
@@ -146,7 +148,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const accountType = (data.account_type as UserRole) ?? 'contractor';
 
+    // Admin flag — read-only; the row can only be created server-side (service role).
+    const { data: adminRow } = await supabase
+      .from('admins').select('user_id').eq('user_id', userId).maybeSingle();
+
     return {
+      is_admin: !!adminRow,
       id: data.id,
       email: data.email,
       username: data.username,

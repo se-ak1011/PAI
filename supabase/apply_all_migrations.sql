@@ -16,6 +16,7 @@
 --   20260623000003_contractor_verification     (user_profiles.verification_status + docs)
 --   20260623000004_messaging                    (conversations + messages, gated to accepted jobs)
 --   20260623000005_job_schedule                  (private_jobs.scheduled_date + location)
+--   20260623000006_admin                          (admins table + is_admin() helper)
 -- Safe to re-run (create if not exists / create or replace / drop policy if exists /
 -- add column if not exists / on conflict do nothing).
 --
@@ -883,6 +884,26 @@ alter table public.private_jobs
   add column if not exists location text;
 create index if not exists private_jobs_scheduled_idx
   on public.private_jobs (contractor_id, scheduled_date);
+
+-- ==================== 20260623000006_admin ====================
+-- Admin access control: admins table (no client writes) + is_admin() helper.
+-- Privileged moderation runs in the `admin` Edge Function (service role); the
+-- disputes/reviews RLS above stays locked. Seed an admin in the SQL editor:
+--   insert into public.admins (user_id) values ('<auth user id>');
+create table if not exists public.admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.admins enable row level security;
+drop policy if exists admins_select_self on public.admins;
+create policy admins_select_self
+  on public.admins for select
+  using (user_id = auth.uid());
+create or replace function public.is_admin()
+returns boolean language sql security definer set search_path = public as $$
+  select exists (select 1 from public.admins a where a.user_id = auth.uid());
+$$;
+grant execute on function public.is_admin() to authenticated;
 
 -- ==================== storage buckets ====================
 -- Create the buckets the app uploads to, so storage works without manual dashboard

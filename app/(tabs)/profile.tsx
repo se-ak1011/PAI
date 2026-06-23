@@ -530,7 +530,10 @@ function SettingsModal({ visible, onClose }: { visible: boolean; onClose: () => 
     { icon: 'notifications-none', label: 'Notifications', action: () => showAlert('Coming Soon', 'Notification settings coming soon.') },
     { icon: 'lock-outline', label: 'Password & Security', action: () => showAlert('Coming Soon', 'Security settings coming soon.') },
     { icon: 'payment', label: 'Subscription & Billing', action: () => showAlert('Subscription', 'Manage your £25/month contractor subscription. Payments via Stripe coming soon.') },
-    { icon: 'admin-panel-settings', label: 'Admin: Disputes', action: () => { onClose(); router.push('/admin-disputes'); } },
+    // Admin panel — only shown to admins (server also enforces this).
+    ...(user?.is_admin ? [
+      { icon: 'admin-panel-settings', label: 'Admin: Disputes & Reviews', action: () => { onClose(); router.push('/admin-disputes'); } },
+    ] : []),
   ];
 
   return (

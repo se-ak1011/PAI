@@ -29,6 +29,7 @@ onto an existing one.
 | `20260623000003_contractor_verification.sql` | `user_profiles.verification_status` + docs + `verification-docs` bucket |
 | `20260623000004_messaging.sql` | `conversations` + `messages` tables, gated to accepted jobs, + RLS |
 | `20260623000005_job_schedule.sql` | `private_jobs.scheduled_date` + `location` (dashboard "Jobs of the Day") |
+| `20260623000006_admin.sql` | `admins` table (no client writes) + `is_admin()` — admin panel access control |
 
 > **Easiest path:** run `supabase/apply_all_migrations.sql` — it concatenates every
 > file above (idempotent) **and** creates the `job-photos`, `receipts`, and
