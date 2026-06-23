@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
 import { getSupabaseClient } from '@/template/core';
+import { callEdgeFunction } from './aiService';
 
 const BUCKET = 'receipts';
 const SIGNED_URL_TTL = 60 * 60;
@@ -84,11 +85,7 @@ export async function pickReceiptImage(
  * No-ops gracefully until the function is deployed (see ROADMAP.md AI steps).
  */
 export async function analyzeReceipt(imageBase64: string): Promise<{ data: ReceiptSuggestion | null; error: string | null }> {
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase.functions.invoke('ai-receipt', { body: { imageBase64 } });
-  if (error) return { data: null, error: error.message };
-  if (data?.error) return { data: null, error: String(data.error) };
-  return { data: (data?.data ?? null) as ReceiptSuggestion | null, error: null };
+  return callEdgeFunction<ReceiptSuggestion>('ai-receipt', { imageBase64 });
 }
 
 export async function listExpenses(userId: string): Promise<Expense[]> {
