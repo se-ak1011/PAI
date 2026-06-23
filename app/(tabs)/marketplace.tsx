@@ -36,6 +36,7 @@ interface PublicContractor {
   avatar_url?: string;
   rating?: number;
   available?: boolean;
+  verified?: boolean;
 }
 
 // ─────────────────────────────────────────────
@@ -93,7 +94,10 @@ function TradeNetworkTab({
             <MaterialIcons name="construction" size={22} color={Colors.info} />
           </View>
           <View style={styles.contractorInfo}>
-            <Text style={styles.contractorName}>{item.display_name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.contractorName}>{item.display_name}</Text>
+              {item.verified ? <MaterialIcons name="verified" size={15} color={Colors.info} /> : null}
+            </View>
             <Text style={styles.contractorBusiness}>
               {item.business_name || (item.trades || []).slice(0, 2).join(' · ') || 'Tradesperson'}
             </Text>
@@ -166,7 +170,7 @@ export default function MarketplaceScreen() {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, username, business_name, trades, hourly_rate_from, hourly_rate, city, postcode_area, avatar_url, available, flexible_pricing')
+        .select('id, username, business_name, trades, hourly_rate_from, hourly_rate, city, postcode_area, avatar_url, available, flexible_pricing, verification_status')
         .in('account_type', ['contractor', 'both'])
         .eq('onboarding_complete', true);
 
@@ -182,6 +186,7 @@ export default function MarketplaceScreen() {
           postcode_area: c.postcode_area,
           avatar_url: c.avatar_url,
           available: c.available,
+          verified: c.verification_status === 'verified',
         })));
       }
       setContractorsLoading(false);
@@ -391,7 +396,10 @@ export default function MarketplaceScreen() {
                     <MaterialIcons name="construction" size={22} color={Colors.primaryGlow} />
                   </View>
                   <View style={styles.contractorInfo}>
-                    <Text style={styles.contractorName}>{item.display_name}</Text>
+                    <View style={styles.nameRow}>
+                      <Text style={styles.contractorName}>{item.display_name}</Text>
+                      {item.verified ? <MaterialIcons name="verified" size={15} color={Colors.info} /> : null}
+                    </View>
                     <Text style={styles.contractorBusiness}>{item.business_name || (item.trades || [])[0] || ''}</Text>
                     <View style={styles.contractorMeta}>
                       <View style={styles.metaItem}>
@@ -482,6 +490,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryDim, alignItems: 'center', justifyContent: 'center',
   },
   contractorInfo: { flex: 1, gap: 3 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   contractorName: { ...Typography.dataMD },
   contractorBusiness: { ...Typography.labelSM },
   contractorMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' },

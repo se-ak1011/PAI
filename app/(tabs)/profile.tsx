@@ -20,7 +20,7 @@ import { TRADE_CATEGORIES, SUBSCRIPTION, getContractorProfileUrl } from '@/const
 import { useRole } from '@/hooks/useRole';
 import { useJobs } from '@/hooks/useJobs';
 import { usePortfolio } from '@/hooks/usePortfolio';
-import { getJobPhotoUrls, pickAndUploadLogo } from '@/services/photoService';
+import { getJobPhotoUrls, pickAndUploadLogo, pickAndUploadVerificationDoc } from '@/services/photoService';
 import { getSupabaseClient } from '@/template/core';
 // MOCK_REVIEWS removed — reviews now fetched from Supabase below
 import { MaterialIcons } from '@expo/vector-icons';
@@ -749,6 +749,64 @@ function ContractorProfileTab() {
     setSavingAvail(false);
   };
 
+  // ── Verification ───────────────────────────────────────
+  const [verifBusy, setVerifBusy] = React.useState(false);
+  const verifStatus = user?.verification_status ?? 'unverified';
+
+  const handleUploadVerification = async () => {
+    if (!user?.id) return;
+    setVerifBusy(true);
+    const { path, error, cancelled } = await pickAndUploadVerificationDoc(user.id);
+    if (cancelled) { setVerifBusy(false); return; }
+    if (error || !path) { setVerifBusy(false); showAlert('Upload failed', error || 'Could not upload the document.'); return; }
+    await updateProfile({
+      verification_docs: [...(user.verification_docs ?? []), path],
+      verification_status: 'pending',
+      verification_submitted_at: new Date().toISOString(),
+    });
+    setVerifBusy(false);
+    showAlert('Submitted for review', 'Thanks! Your documents are under review. You’ll get the Verified badge once approved.');
+  };
+
+  function VerificationCard() {
+    const meta: Record<string, { label: string; sub: string; icon: any; color: string }> = {
+      verified:   { label: 'Verified',          sub: 'Customers can see you’re a verified tradesperson.', icon: 'verified', color: Colors.success },
+      pending:    { label: 'Under review',      sub: 'We’re checking your documents. This usually takes a little while.', icon: 'hourglass-top', color: Colors.warning },
+      rejected:   { label: 'Not verified',      sub: 'We couldn’t verify the documents provided. Please upload clearer proof.', icon: 'error-outline', color: Colors.error },
+      unverified: { label: 'Get verified',      sub: 'Upload proof (public liability insurance, trade qualification or ID) to earn a Verified badge customers trust.', icon: 'shield', color: Colors.primaryGlow },
+    };
+    const m = meta[verifStatus] ?? meta.unverified;
+    const canSubmit = verifStatus === 'unverified' || verifStatus === 'rejected' || verifStatus === 'pending';
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Verification</Text>
+        <View style={styles.verifCard}>
+          <View style={[styles.verifIconWrap, { backgroundColor: m.color + '22' }]}>
+            <MaterialIcons name={m.icon} size={22} color={m.color} />
+          </View>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={[styles.verifLabel, { color: m.color }]}>{m.label}</Text>
+            <Text style={styles.verifSub}>{m.sub}</Text>
+          </View>
+        </View>
+        {canSubmit ? (
+          <Pressable style={styles.verifBtn} onPress={handleUploadVerification} disabled={verifBusy}>
+            {verifBusy ? (
+              <ActivityIndicator size="small" color={Colors.primaryGlow} />
+            ) : (
+              <>
+                <MaterialIcons name="upload-file" size={16} color={Colors.primaryGlow} />
+                <Text style={styles.verifBtnText}>
+                  {(user?.verification_docs?.length ?? 0) > 0 ? 'Add another document' : 'Upload document'}
+                </Text>
+              </>
+            )}
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+
   function AvailabilityCalendar() {
     return (
       <View style={styles.section}>
@@ -887,6 +945,9 @@ function ContractorProfileTab() {
           <MaterialIcons name="share" size={18} color={Colors.primaryGlow} />
           <Text style={styles.shareBtnText}>Share Profile</Text>
         </Pressable>
+
+        {/* Verification */}
+        <VerificationCard />
 
         {/* Trades */}
         <View style={styles.section}>
@@ -1313,6 +1374,21 @@ const styles = StyleSheet.create({
     borderColor: Colors.border, paddingVertical: 12,
   },
   shareBtnText: { ...Typography.btnSM, color: Colors.primaryGlow },
+  // Verification
+  verifCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.card, borderRadius: Radius.lg, borderWidth: 1,
+    borderColor: Colors.border, padding: 14,
+  },
+  verifIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  verifLabel: { ...Typography.dataMD, fontWeight: '700' },
+  verifSub: { ...Typography.labelSM, color: Colors.textSecondary, lineHeight: 17 },
+  verifBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border, paddingVertical: 12, marginTop: 10,
+  },
+  verifBtnText: { ...Typography.btnSM, color: Colors.primaryGlow },
 
   // Section
   section: { gap: 12 },

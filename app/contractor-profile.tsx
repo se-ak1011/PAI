@@ -62,6 +62,7 @@ interface ContractorData {
   available?: boolean;
   website?: string;
   availability_days?: string[];
+  verification_status?: string;
 }
 
 export default function ContractorProfileScreen() {
@@ -81,7 +82,7 @@ export default function ContractorProfileScreen() {
       const [profileRes, reviewsRes, projectsRes] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, username, business_name, bio, trades, hourly_rate_from, city, postcode_area, avatar_url, available, website, availability_days')
+          .select('id, username, business_name, bio, trades, hourly_rate_from, city, postcode_area, avatar_url, available, website, availability_days, verification_status')
           .eq('id', id)
           .single(),
         supabase
@@ -200,7 +201,15 @@ export default function ContractorProfileScreen() {
             </View>
           )}
           <View style={styles.heroInfo}>
-            <Text style={styles.name}>{contractor.username || 'Tradesperson'}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.name}>{contractor.username || 'Tradesperson'}</Text>
+              {contractor.verification_status === 'verified' ? (
+                <View style={styles.verifiedPill}>
+                  <MaterialIcons name="verified" size={14} color={Colors.info} />
+                  <Text style={styles.verifiedPillText}>Verified</Text>
+                </View>
+              ) : null}
+            </View>
             {contractor.business_name ? (
               <Text style={styles.business}>{contractor.business_name}</Text>
             ) : null}
@@ -401,6 +410,13 @@ const styles = StyleSheet.create({
   avatarFallback: { backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   heroInfo: { flex: 1, gap: 6 },
   name: { ...Typography.brandMD },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  verifiedPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.info + '22', borderRadius: Radius.pill,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  verifiedPillText: { ...Typography.labelXS, color: Colors.info, fontWeight: '700' },
   business: { ...Typography.labelMD, color: Colors.textSecondary },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stars: { flexDirection: 'row', gap: 2 },

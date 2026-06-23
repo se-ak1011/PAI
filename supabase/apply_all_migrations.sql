@@ -13,6 +13,7 @@
 --   20260622000005_branding_logo               (user_profiles.logo_url)
 --   20260623000001_storage_buckets             (job-photos, receipts, portfolio buckets)
 --   20260623000002_private_job_trades          (private_jobs.trades)
+--   20260623000003_contractor_verification     (user_profiles.verification_status + docs)
 -- Safe to re-run (create if not exists / create or replace / drop policy if exists /
 -- add column if not exists / on conflict do nothing).
 --
@@ -740,14 +741,47 @@ alter table public.user_profiles
 alter table public.private_jobs
   add column if not exists trades text[] not null default '{}';
 
+-- ==================== 20260623000003_contractor_verification ====================
+-- Contractor verification badge (doc upload -> admin review -> verified).
+alter table public.user_profiles
+  add column if not exists verification_status text not null default 'unverified'
+    check (verification_status in ('unverified', 'pending', 'verified', 'rejected')),
+  add column if not exists verification_docs text[] not null default '{}',
+  add column if not exists verification_submitted_at timestamptz;
+
+drop policy if exists "Verification docs: owner can upload" on storage.objects;
+create policy "Verification docs: owner can upload"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'verification-docs'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Verification docs: owner can read" on storage.objects;
+create policy "Verification docs: owner can read"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'verification-docs'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Verification docs: owner can delete" on storage.objects;
+create policy "Verification docs: owner can delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'verification-docs'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
 -- ==================== storage buckets ====================
 -- Create the buckets the app uploads to, so storage works without manual dashboard
 -- steps. `job-photos` + `receipts` are PRIVATE (owner-scoped reads via the policies
 -- above); `portfolio` is PUBLIC (anyone can read published portfolio media + logos).
 insert into storage.buckets (id, name, public)
 values
-  ('job-photos', 'job-photos', false),
-  ('receipts',   'receipts',   false),
-  ('portfolio',  'portfolio',  true)
+  ('job-photos',        'job-photos',        false),
+  ('receipts',          'receipts',          false),
+  ('portfolio',         'portfolio',         true),
+  ('verification-docs', 'verification-docs', false)
 on conflict (id) do nothing;
 

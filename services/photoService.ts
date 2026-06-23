@@ -76,6 +76,36 @@ export async function pickAndUploadLogo(
   return { url: data?.publicUrl ?? null, error: null };
 }
 
+const VERIFICATION_BUCKET = 'verification-docs';
+
+/**
+ * Pick an image (insurance / trade card / ID) and upload it to the PRIVATE
+ * `verification-docs` bucket at {userId}/{timestamp}.{ext}. Returns the path.
+ * Only the owner (and the service role, for admin review) can read it.
+ */
+export async function pickAndUploadVerificationDoc(
+  userId: string,
+): Promise<UploadResult> {
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) return { path: null, error: 'Photo library permission is needed.' };
+
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, base64: true });
+  if (result.canceled || !result.assets?.[0]) return { path: null, error: null, cancelled: true };
+  const asset = result.assets[0];
+  if (!asset.base64) return { path: null, error: 'Could not read the selected image.' };
+
+  const isPng = (asset.mimeType || '').includes('png');
+  const ext = isPng ? 'png' : 'jpg';
+  const path = `${userId}/${Date.now()}.${ext}`;
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.storage.from(VERIFICATION_BUCKET).upload(path, decode(asset.base64), {
+    contentType: isPng ? 'image/png' : 'image/jpeg',
+    upsert: false,
+  });
+  if (error) return { path: null, error: error.message };
+  return { path, error: null };
+}
+
 /** Resolve a private storage path to a temporary signed URL for display. */
 export async function getJobPhotoUrl(path: string): Promise<string | null> {
   const supabase = getSupabaseClient();

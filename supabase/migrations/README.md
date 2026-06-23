@@ -26,6 +26,7 @@ onto an existing one.
 | `20260622000005_branding_logo.sql` | `user_profiles.logo_url` |
 | `20260623000001_storage_buckets.sql` | Creates `job-photos`, `receipts`, `portfolio` storage buckets |
 | `20260623000002_private_job_trades.sql` | `private_jobs.trades` (trades a job spans) |
+| `20260623000003_contractor_verification.sql` | `user_profiles.verification_status` + docs + `verification-docs` bucket |
 
 > **Easiest path:** run `supabase/apply_all_migrations.sql` — it concatenates every
 > file above (idempotent) **and** creates the `job-photos`, `receipts`, and

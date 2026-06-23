@@ -39,6 +39,10 @@ export interface UserProfile {
   website?: string;
   logo_url?: string;
   social_links?: Record<string, string>;
+  // Verification (contractor trust badge)
+  verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected';
+  verification_docs?: string[];
+  verification_submitted_at?: string | null;
   // Availability
   availability_days?: string[];
 }
@@ -171,6 +175,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       portfolio_images: data.portfolio_images || [],
       website: data.website,
       logo_url: data.logo_url,
+      verification_status: (data.verification_status as UserProfile['verification_status']) ?? 'unverified',
+      verification_docs: data.verification_docs || [],
+      verification_submitted_at: data.verification_submitted_at ?? null,
       social_links: data.social_links || {},
       availability_days: data.availability_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     };
@@ -409,6 +416,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data.portfolio_images !== undefined) updateData.portfolio_images = data.portfolio_images;
     if (data.website !== undefined) updateData.website = data.website;
     if (data.logo_url !== undefined) updateData.logo_url = data.logo_url;
+    if (data.verification_status !== undefined) updateData.verification_status = data.verification_status;
+    if (data.verification_docs !== undefined) updateData.verification_docs = data.verification_docs;
+    if (data.verification_submitted_at !== undefined) updateData.verification_submitted_at = data.verification_submitted_at;
     if (data.social_links !== undefined) updateData.social_links = data.social_links;
     if (data.availability_days !== undefined) updateData.availability_days = data.availability_days;
 
