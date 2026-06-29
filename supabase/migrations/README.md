@@ -30,6 +30,7 @@ onto an existing one.
 | `20260623000004_messaging.sql` | `conversations` + `messages` tables, gated to accepted jobs, + RLS |
 | `20260623000005_job_schedule.sql` | `private_jobs.scheduled_date` + `location` (dashboard "Jobs of the Day") |
 | `20260623000006_admin.sql` | `admins` table (no client writes) + `is_admin()` — admin panel access control |
+| `20260623000007_invoice_line_items.sql` | `private_jobs.line_items` — itemised invoice tasks (date/location/hours/rate) |
 
 > **Easiest path:** run `supabase/apply_all_migrations.sql` — it concatenates every
 > file above (idempotent) **and** creates the `job-photos`, `receipts`, and

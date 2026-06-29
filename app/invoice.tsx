@@ -35,6 +35,7 @@ export default function InvoiceScreen() {
   const { addPAIJobIncome } = useTaxPot();
   const { showAlert } = useAlert();
   const [marking, setMarking] = React.useState(false);
+  const [tasksCollapsed, setTasksCollapsed] = React.useState(false);
 
   // Guarded back: if there's no history (deep link / cold start), go to the app
   // instead of no-op'ing and stranding the user.
@@ -44,6 +45,8 @@ export default function InvoiceScreen() {
   };
 
   const job = privateJobs.find(j => j.id === id);
+  const lineItems = job?.line_items ?? [];
+  const lineItemsHours = lineItems.reduce((s, li) => s + (Number(li.hours) || 0), 0);
 
   if (!job) {
     return (
@@ -276,13 +279,49 @@ export default function InvoiceScreen() {
               <Text style={styles.thAmt}>AMOUNT</Text>
             </View>
 
-            {/* Labour */}
-            <View style={styles.tr}>
-              <Text style={styles.tdDesc}>{isHourly ? 'Labour (hrs)' : 'Labour'}</Text>
-              <Text style={styles.tdQty}>{labourQty}</Text>
-              <Text style={styles.tdRate}>{money(labourRate)}</Text>
-              <Text style={styles.tdAmt}>{money(job.labour)}</Text>
-            </View>
+            {/* Labour — itemised tasks (collapsible) or a single row */}
+            {lineItems.length > 0 ? (
+              <>
+                {tasksCollapsed ? (
+                  <View style={styles.tr}>
+                    <Text style={styles.tdDesc}>Labour</Text>
+                    <Text style={styles.tdQty}>{lineItemsHours}</Text>
+                    <Text style={styles.tdRate} />
+                    <Text style={styles.tdAmt}>{money(job.labour)}</Text>
+                  </View>
+                ) : (
+                  lineItems.map((li, i) => (
+                    <View key={i} style={styles.tr}>
+                      <View style={styles.tdDescWrap}>
+                        <Text style={styles.tdDesc}>{li.description}</Text>
+                        {li.date || li.location ? (
+                          <Text style={styles.tdSub}>
+                            {[li.date ? new Date(li.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null, li.location]
+                              .filter(Boolean).join(' · ')}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Text style={styles.tdQty}>{li.hours}</Text>
+                      <Text style={styles.tdRate}>{money(Number(li.rate) || 0)}</Text>
+                      <Text style={styles.tdAmt}>{money((Number(li.hours) || 0) * (Number(li.rate) || 0))}</Text>
+                    </View>
+                  ))
+                )}
+                <Pressable style={styles.collapseToggle} onPress={() => setTasksCollapsed(c => !c)}>
+                  <MaterialIcons name={tasksCollapsed ? 'unfold-more' : 'unfold-less'} size={14} color={Colors.primaryGlow} />
+                  <Text style={styles.collapseToggleText}>
+                    {tasksCollapsed ? `Show ${lineItems.length} task${lineItems.length !== 1 ? 's' : ''}` : 'Collapse to total'}
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <View style={styles.tr}>
+                <Text style={styles.tdDesc}>{isHourly ? 'Labour (hrs)' : 'Labour'}</Text>
+                <Text style={styles.tdQty}>{labourQty}</Text>
+                <Text style={styles.tdRate}>{money(labourRate)}</Text>
+                <Text style={styles.tdAmt}>{money(job.labour)}</Text>
+              </View>
+            )}
 
             {/* Itemised materials */}
             {materialItems.map((m, i) => {
@@ -450,7 +489,11 @@ const styles = StyleSheet.create({
   thRate: { ...Typography.labelXS, color: Colors.textMuted, width: 72, textAlign: 'right' },
   thAmt: { ...Typography.labelXS, color: Colors.textMuted, width: 80, textAlign: 'right' },
   tr: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle },
+  tdDescWrap: { flex: 1, paddingRight: 6, gap: 2 },
   tdDesc: { ...Typography.bodyMD, flex: 1, paddingRight: 6 },
+  tdSub: { ...Typography.labelXS, color: Colors.textMuted },
+  collapseToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, justifyContent: 'center' },
+  collapseToggleText: { ...Typography.labelSM, color: Colors.primaryGlow, fontWeight: '600' },
   tdQty: { ...Typography.labelMD, color: Colors.textSecondary, width: 38, textAlign: 'right' },
   tdRate: { ...Typography.labelMD, color: Colors.textSecondary, width: 72, textAlign: 'right' },
   tdAmt: { ...Typography.dataMD, width: 80, textAlign: 'right' },

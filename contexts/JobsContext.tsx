@@ -4,6 +4,14 @@ import { useContext } from 'react';
 import { withTimeout } from '@/utils/asyncTimeout';
 import { deferUntilAfterFirstPaint, getDeferredSupabaseClient, type DeferredSupabaseClient } from '@/utils/deferredSupabase';
 
+export interface LineItem {
+  date?: string | null;       // YYYY-MM-DD
+  location?: string | null;
+  description: string;
+  hours: number;
+  rate: number;               // £ per hour; amount = hours * rate
+}
+
 export interface PrivateJob {
   id: string;
   contractor_id: string;
@@ -16,6 +24,7 @@ export interface PrivateJob {
   materials: number;
   vat: number;
   materials_items: { name: string; qty: number; price: number; unit?: string; got?: boolean }[];
+  line_items: LineItem[];
   trades: string[];
   scheduled_date: string | null;
   location: string | null;
@@ -116,6 +125,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       setPrivateJobs(data.map(j => ({
         ...j,
         materials_items: j.materials_items || [],
+        line_items: j.line_items || [],
         trades: j.trades || [],
         scheduled_date: j.scheduled_date ?? null,
         location: j.location ?? null,
@@ -216,7 +226,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       throw new Error(error.message);
     }
     if (data) {
-      setPrivateJobs(prev => [{ ...data, materials_items: data.materials_items || [], trades: data.trades || [], scheduled_date: data.scheduled_date ?? null, location: data.location ?? null, receipts: data.receipts || [], progress_photos: data.progress_photos || [], job_type: data.job_type ?? 'fixed', hourly_rate: data.hourly_rate ?? null, estimated_hours: data.estimated_hours ?? null, actual_hours: data.actual_hours ?? null }, ...prev]);
+      setPrivateJobs(prev => [{ ...data, materials_items: data.materials_items || [], line_items: data.line_items || [], trades: data.trades || [], scheduled_date: data.scheduled_date ?? null, location: data.location ?? null, receipts: data.receipts || [], progress_photos: data.progress_photos || [], job_type: data.job_type ?? 'fixed', hourly_rate: data.hourly_rate ?? null, estimated_hours: data.estimated_hours ?? null, actual_hours: data.actual_hours ?? null }, ...prev]);
     }
   };
 

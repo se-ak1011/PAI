@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template/ui';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { INCOME_CATEGORIES } from '@/constants/config';
 
 interface Props {
@@ -25,7 +26,6 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
   const [customerName, setCustomerName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [labourStr, setLabourStr] = useState('');
   const [materialsStr, setMaterialsStr] = useState('');
   const [includeVat, setIncludeVat] = useState(false);
   // Trades/categories — a job can span more than one (e.g. plumbing + tiling).
@@ -33,16 +33,21 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
   const toggleCategory = (c: string) =>
     setCategories(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
   const [saving, setSaving] = useState(false);
-  // Hourly fields
-  const [jobType, setJobType] = useState<'fixed' | 'hourly'>('fixed');
-  const [hourlyRateStr, setHourlyRateStr] = useState('');
-  const [actualHoursStr, setActualHoursStr] = useState('');
 
-  const hourlyRate = parseFloat(hourlyRateStr) || 0;
-  const actualHours = parseFloat(actualHoursStr) || 0;
-  const labour = jobType === 'hourly'
-    ? hourlyRate * actualHours
-    : parseFloat(labourStr) || 0;
+  // Itemised tasks — each is date/location/work at hours × rate; they roll up.
+  type TaskDraft = { date: Date | null; location: string; description: string; hoursStr: string; rateStr: string };
+  const emptyTask = (): TaskDraft => ({ date: null, location: '', description: '', hoursStr: '', rateStr: user?.hourly_rate ? String(user.hourly_rate) : '' });
+  const [tasks, setTasks] = useState<TaskDraft[]>([emptyTask()]);
+  const [datePickerFor, setDatePickerFor] = useState<number | null>(null);
+
+  const updateTask = (i: number, patch: Partial<TaskDraft>) =>
+    setTasks(prev => prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
+  const addTask = () => setTasks(prev => [...prev, emptyTask()]);
+  const removeTask = (i: number) => setTasks(prev => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
+
+  const taskAmount = (t: TaskDraft) => (parseFloat(t.hoursStr) || 0) * (parseFloat(t.rateStr) || 0);
+  const labour = tasks.reduce((s, t) => s + taskAmount(t), 0);
+  const totalHours = tasks.reduce((s, t) => s + (parseFloat(t.hoursStr) || 0), 0);
   const materials = parseFloat(materialsStr) || 0;
   const subtotal = labour + materials;
   const vat = includeVat ? Math.round(subtotal * 0.2 * 100) / 100 : 0;
@@ -52,14 +57,12 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
     setCustomerName('');
     setJobTitle('');
     setDescription('');
-    setLabourStr('');
     setMaterialsStr('');
     setIncludeVat(false);
     setCategories([INCOME_CATEGORIES[0]]);
     setSaving(false);
-    setJobType('fixed');
-    setHourlyRateStr('');
-    setActualHoursStr('');
+    setTasks([emptyTask()]);
+    setDatePickerFor(null);
   };
 
   const handleCreate = async () => {
@@ -71,16 +74,21 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
       showAlert('Required', 'Please enter a job title.');
       return;
     }
-    if (jobType === 'hourly') {
-      if (hourlyRate <= 0) { showAlert('Required', 'Please enter a valid hourly rate.'); return; }
-      if (actualHours <= 0) { showAlert('Required', 'Please enter the actual hours worked.'); return; }
-    } else if (labour <= 0 && materials <= 0) {
-      showAlert('Required', 'Enter at least a labour or materials amount.');
+    const validTasks = tasks.filter(t => t.description.trim() && taskAmount(t) > 0);
+    if (validTasks.length === 0 && materials <= 0) {
+      showAlert('Required', 'Add at least one task (with hours & rate) or a materials amount.');
       return;
     }
 
     setSaving(true);
     const today = new Date().toISOString().split('T')[0];
+    const lineItems = validTasks.map(t => ({
+      date: t.date ? t.date.toISOString().split('T')[0] : null,
+      location: t.location.trim() || null,
+      description: t.description.trim(),
+      hours: parseFloat(t.hoursStr) || 0,
+      rate: parseFloat(t.rateStr) || 0,
+    }));
 
     try {
       await addPrivateJob({
@@ -94,6 +102,7 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
         materials,
         vat,
         materials_items: [],
+        line_items: lineItems,
         trades: categories,
         scheduled_date: null,
         location: null,
@@ -101,10 +110,10 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
         invoiced_at: today,
         paid_at: null,
         source_job_post_id: null,
-        job_type: jobType,
-        hourly_rate: jobType === 'hourly' ? hourlyRate : null,
-        estimated_hours: jobType === 'hourly' ? actualHours : null,
-        actual_hours: jobType === 'hourly' ? actualHours : null,
+        job_type: 'fixed',
+        hourly_rate: null,
+        estimated_hours: null,
+        actual_hours: null,
       });
     } catch (e: any) {
       // Real save failure — tell the user instead of faking success.
@@ -163,33 +172,6 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
             <Text style={styles.infoText}>
               Creates a PAI invoice immediately. Once paid (outside PAI), mark it as paid to register income in your Tax Pot.
             </Text>
-          </View>
-
-          {/* Job type toggle */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Invoice Type</Text>
-            <View style={styles.jobTypeRow}>
-              <Pressable
-                style={[styles.jobTypeBtn, jobType === 'fixed' && styles.jobTypeBtnActive]}
-                onPress={() => setJobType('fixed')}
-              >
-                <MaterialIcons name="receipt-long" size={16} color={jobType === 'fixed' ? Colors.textInverse : Colors.textSecondary} />
-                <View>
-                  <Text style={[styles.jobTypeBtnLabel, jobType === 'fixed' && styles.jobTypeBtnLabelActive]}>Fixed Price</Text>
-                  <Text style={[styles.jobTypeBtnSub, jobType === 'fixed' && styles.jobTypeBtnSubActive]}>Agreed quote</Text>
-                </View>
-              </Pressable>
-              <Pressable
-                style={[styles.jobTypeBtn, jobType === 'hourly' && styles.jobTypeBtnActive]}
-                onPress={() => setJobType('hourly')}
-              >
-                <MaterialIcons name="schedule" size={16} color={jobType === 'hourly' ? Colors.textInverse : Colors.textSecondary} />
-                <View>
-                  <Text style={[styles.jobTypeBtnLabel, jobType === 'hourly' && styles.jobTypeBtnLabelActive]}>Hourly Rate</Text>
-                  <Text style={[styles.jobTypeBtnSub, jobType === 'hourly' && styles.jobTypeBtnSubActive]}>Time & materials</Text>
-                </View>
-              </Pressable>
-            </View>
           </View>
 
           {/* Customer */}
@@ -253,89 +235,118 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
             </View>
           </View>
 
-          {/* Amounts */}
+          {/* Work — itemised tasks (date/location/work · hrs × rate) */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Amounts</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Work</Text>
+              <Text style={styles.sectionHint}>Each task rolls up into the total</Text>
+            </View>
 
-            {jobType === 'hourly' ? (
-              <>
+            {tasks.map((t, i) => (
+              <View key={i} style={styles.taskCard}>
+                <View style={styles.taskTopRow}>
+                  <Text style={styles.taskNum}>Task {i + 1}</Text>
+                  {tasks.length > 1 ? (
+                    <Pressable hitSlop={8} onPress={() => removeTask(i)}>
+                      <MaterialIcons name="close" size={18} color={Colors.textMuted} />
+                    </Pressable>
+                  ) : null}
+                </View>
+
+                <TextInput
+                  style={styles.input}
+                  value={t.description}
+                  onChangeText={(v) => updateTask(i, { description: v })}
+                  placeholder="Work done — e.g. Labouring, Plumbing…"
+                  placeholderTextColor={Colors.textMuted}
+                />
+
                 <View style={styles.amountRow}>
-                  <View style={[styles.inputWrap, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Hourly Rate (£/hr)</Text>
-                    <View style={styles.prefixInput}>
-                      <Text style={styles.prefix}>£</Text>
-                      <TextInput
-                        style={styles.prefixInputField}
-                        value={hourlyRateStr}
-                        onChangeText={setHourlyRateStr}
-                        placeholder="45"
-                        placeholderTextColor={Colors.textMuted}
-                        keyboardType="decimal-pad"
-                      />
-                    </View>
-                  </View>
-                  <View style={[styles.inputWrap, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Actual Hours</Text>
-                    <View style={styles.prefixInput}>
-                      <MaterialIcons name="schedule" size={14} color={Colors.textMuted} style={{ marginRight: 4 }} />
-                      <TextInput
-                        style={styles.prefixInputField}
-                        value={actualHoursStr}
-                        onChangeText={setActualHoursStr}
-                        placeholder="8"
-                        placeholderTextColor={Colors.textMuted}
-                        keyboardType="decimal-pad"
-                      />
-                    </View>
-                  </View>
+                  <Pressable style={styles.taskDateBtn} onPress={() => setDatePickerFor(i)}>
+                    <MaterialIcons name="event" size={15} color={t.date ? Colors.primaryGlow : Colors.textMuted} />
+                    <Text style={[styles.taskDateText, t.date && styles.taskDateTextSet]} numberOfLines={1}>
+                      {t.date ? t.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Date'}
+                    </Text>
+                  </Pressable>
+                  <TextInput
+                    style={[styles.input, { flex: 1.5 }]}
+                    value={t.location}
+                    onChangeText={(v) => updateTask(i, { location: v })}
+                    placeholder="Location"
+                    placeholderTextColor={Colors.textMuted}
+                  />
                 </View>
-                <View style={[styles.inputWrap]}>
-                  <Text style={styles.inputLabel}>Materials (£)</Text>
-                  <View style={styles.prefixInput}>
-                    <Text style={styles.prefix}>£</Text>
+
+                <View style={styles.amountRow}>
+                  <View style={[styles.prefixInput, { flex: 1 }]}>
+                    <MaterialIcons name="schedule" size={14} color={Colors.textMuted} style={{ marginRight: 4 }} />
                     <TextInput
                       style={styles.prefixInputField}
-                      value={materialsStr}
-                      onChangeText={setMaterialsStr}
-                      placeholder="0.00"
+                      value={t.hoursStr}
+                      onChangeText={(v) => updateTask(i, { hoursStr: v })}
+                      placeholder="Hrs"
                       placeholderTextColor={Colors.textMuted}
                       keyboardType="decimal-pad"
                     />
                   </View>
-                </View>
-              </>
-            ) : (
-              <View style={styles.amountRow}>
-                <View style={[styles.inputWrap, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Labour (£)</Text>
-                  <View style={styles.prefixInput}>
+                  <View style={[styles.prefixInput, { flex: 1 }]}>
                     <Text style={styles.prefix}>£</Text>
                     <TextInput
                       style={styles.prefixInputField}
-                      value={labourStr}
-                      onChangeText={setLabourStr}
-                      placeholder="0.00"
+                      value={t.rateStr}
+                      onChangeText={(v) => updateTask(i, { rateStr: v })}
+                      placeholder="Rate/hr"
                       placeholderTextColor={Colors.textMuted}
                       keyboardType="decimal-pad"
                     />
                   </View>
-                </View>
-                <View style={[styles.inputWrap, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Materials (£)</Text>
-                  <View style={styles.prefixInput}>
-                    <Text style={styles.prefix}>£</Text>
-                    <TextInput
-                      style={styles.prefixInputField}
-                      value={materialsStr}
-                      onChangeText={setMaterialsStr}
-                      placeholder="0.00"
-                      placeholderTextColor={Colors.textMuted}
-                      keyboardType="decimal-pad"
-                    />
+                  <View style={styles.taskAmountBox}>
+                    <Text style={styles.taskAmountText}>£{taskAmount(t).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
                   </View>
                 </View>
               </View>
-            )}
+            ))}
+
+            <Pressable style={styles.addTaskBtn} onPress={addTask}>
+              <MaterialIcons name="add" size={16} color={Colors.primaryGlow} />
+              <Text style={styles.addTaskText}>Add task</Text>
+            </Pressable>
+
+            {datePickerFor !== null ? (
+              <View>
+                <DateTimePicker
+                  value={tasks[datePickerFor]?.date || new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  onChange={(event, date) => {
+                    const idx = datePickerFor;
+                    if (Platform.OS !== 'ios') setDatePickerFor(null);
+                    if (event.type === 'set' && date && idx !== null) updateTask(idx, { date });
+                  }}
+                />
+                {Platform.OS === 'ios' ? (
+                  <Pressable style={styles.dateDoneBtn} onPress={() => setDatePickerFor(null)}>
+                    <Text style={styles.dateDoneText}>Done</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+
+            {/* Materials */}
+            <View style={styles.inputWrap}>
+              <Text style={styles.inputLabel}>Materials (£)</Text>
+              <View style={styles.prefixInput}>
+                <Text style={styles.prefix}>£</Text>
+                <TextInput
+                  style={styles.prefixInputField}
+                  value={materialsStr}
+                  onChangeText={setMaterialsStr}
+                  placeholder="0.00"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
 
             {/* VAT toggle */}
             <View style={styles.vatRow}>
@@ -354,17 +365,10 @@ export function CreateInvoiceModal({ visible, onClose }: Props) {
 
           {/* Totals summary */}
           <View style={styles.totalCard}>
-            {jobType === 'hourly' && hourlyRate > 0 && actualHours > 0 ? (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLineLabel}>Labour ({actualHours} hrs × £{hourlyRate}/hr)</Text>
-                <Text style={styles.totalLineValue}>£{labour.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
-              </View>
-            ) : (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLineLabel}>Labour</Text>
-                <Text style={styles.totalLineValue}>£{labour.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
-              </View>
-            )}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLineLabel}>Labour{totalHours > 0 ? ` (${totalHours} hrs)` : ''}</Text>
+              <Text style={styles.totalLineValue}>£{labour.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
+            </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLineLabel}>Materials</Text>
               <Text style={styles.totalLineValue}>£{materials.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</Text>
@@ -408,6 +412,33 @@ const styles = StyleSheet.create({
 
   scroll: { flex: 1 },
   scrollContent: { padding: Spacing.md, gap: Spacing.md },
+
+  // Tasks
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  sectionHint: { ...Typography.labelSM, color: Colors.textMuted },
+  taskCard: {
+    backgroundColor: Colors.cardAlt, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border, padding: 12, gap: 10,
+  },
+  taskTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  taskNum: { ...Typography.labelXS, color: Colors.primaryGlow },
+  taskDateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1,
+    backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border, paddingHorizontal: 12, height: 48,
+  },
+  taskDateText: { ...Typography.bodyMD, color: Colors.textMuted, flex: 1 },
+  taskDateTextSet: { color: Colors.textPrimary },
+  taskAmountBox: { flex: 1, alignItems: 'flex-end', justifyContent: 'center', height: 48 },
+  taskAmountText: { ...Typography.dataMD, color: Colors.textPrimary },
+  addTaskBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 11, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.primaryLight, backgroundColor: Colors.primaryDim,
+  },
+  addTaskText: { ...Typography.btnSM, color: Colors.primaryGlow },
+  dateDoneBtn: { alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 8 },
+  dateDoneText: { ...Typography.btnSM, color: Colors.primaryGlow },
 
   infoBanner: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,

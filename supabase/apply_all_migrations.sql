@@ -17,6 +17,7 @@
 --   20260623000004_messaging                    (conversations + messages, gated to accepted jobs)
 --   20260623000005_job_schedule                  (private_jobs.scheduled_date + location)
 --   20260623000006_admin                          (admins table + is_admin() helper)
+--   20260623000007_invoice_line_items             (private_jobs.line_items — itemised tasks)
 -- Safe to re-run (create if not exists / create or replace / drop policy if exists /
 -- add column if not exists / on conflict do nothing).
 --
@@ -904,6 +905,11 @@ returns boolean language sql security definer set search_path = public as $$
   select exists (select 1 from public.admins a where a.user_id = auth.uid());
 $$;
 grant execute on function public.is_admin() to authenticated;
+
+-- ==================== 20260623000007_invoice_line_items ====================
+-- Itemised invoice tasks (date/location/work/hours/rate) that roll up to labour.
+alter table public.private_jobs
+  add column if not exists line_items jsonb not null default '[]'::jsonb;
 
 -- ==================== storage buckets ====================
 -- Create the buckets the app uploads to, so storage works without manual dashboard

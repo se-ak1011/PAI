@@ -212,6 +212,7 @@ export function CreateJobModal({ visible, onClose }: CreateJobModalProps) {
         materials: safeMaterials,
         vat: safeVat,
         materials_items: safeMaterialItems.map(m => ({ name: m.name, qty: m.qty, price: m.estimatedPrice, unit: m.unit })),
+        line_items: [],
         trades,
         scheduled_date: scheduledDate ? scheduledDate.toISOString().split('T')[0] : null,
         location: location.trim() || null,
