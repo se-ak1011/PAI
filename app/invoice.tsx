@@ -433,13 +433,13 @@ const styles = StyleSheet.create({
   },
   docHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    padding: 24, backgroundColor: Colors.primaryDim,
+    padding: 18, backgroundColor: Colors.primaryDim,
   },
-  docBrand: { fontSize: 28, fontWeight: '900', color: Colors.primaryGlow, letterSpacing: -1 },
+  docBrand: { fontSize: 13, fontWeight: '800', color: Colors.primaryGlow, letterSpacing: 2, marginBottom: 2 },
   docTagline: { ...Typography.labelSM, color: Colors.textMuted, marginTop: 2 },
-  docHeaderLeft: { flex: 1, gap: 4 },
-  docLogo: { width: 96, height: 48, alignSelf: 'flex-start' },
-  docBusiness: { ...Typography.dataMD, color: Colors.textPrimary },
+  docHeaderLeft: { flex: 1, gap: 2 },
+  docLogo: { width: 72, height: 34, alignSelf: 'flex-start', marginBottom: 4 },
+  docBusiness: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 },
   docBusinessSub: { ...Typography.labelSM, color: Colors.textSecondary },
 
   // Line-item table
